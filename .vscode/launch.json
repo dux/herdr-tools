@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:pastir}",
+      "name": "Debug Pastir",
+      "target": "Pastir",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug Pastir"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:pastir}",
+      "name": "Release Pastir",
+      "target": "Pastir",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release Pastir"
+    }
+  ]
+}

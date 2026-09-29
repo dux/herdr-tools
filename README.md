@@ -27,6 +27,7 @@ Its image-generation prompt is recorded in `Resources/PastirIcon.prompt.txt`.
 Click **+** to add one or more project folders.
 Click a project tab, then **Herdr**, **Fork**, or **VS Code**.
 Right-click a project to reveal its folder or remove it from the bar.
+Right-click anywhere else on the bar to slide it up and hide it for five seconds, then it slides back down.
 The ellipsis menu and menu-bar icon include a Quit action.
 
 Click **Enable Window Control** and allow Pastir in System Settings > Privacy & Security > Accessibility.
