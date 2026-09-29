@@ -1,0 +1,28 @@
+desc 'Build, install, and run Pastir'
+
+task :build do
+  desc 'Build and sign build/Pastir.app'
+  proc { sh 'zsh build.sh' }
+end
+
+task :install do
+  desc 'Build and install Pastir to /Applications'
+  needs :build
+  proc do
+    sh 'ditto build/Pastir.app /Applications/Pastir.app'
+    sh 'codesign --verify --strict /Applications/Pastir.app'
+    sh 'touch /Applications/Pastir.app'
+    sh '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Pastir.app'
+    say.green 'Installed /Applications/Pastir.app'
+  end
+end
+
+task :run do
+  desc 'Open the installed Pastir app'
+  proc { sh 'open /Applications/Pastir.app' }
+end
+
+task :test do
+  desc 'Run the Swift tests'
+  proc { sh 'swift test' }
+end
