@@ -13,6 +13,5 @@
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSAppleEventsUsageDescription</key><string>Pastir opens and focuses a Terminal window for each project's Herdr session.</string>
 </dict>
 </plist>

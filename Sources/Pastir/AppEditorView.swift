@@ -9,9 +9,8 @@ struct AppEditorView: View {
     @State private var id: UUID
     @State private var name: String
     @State private var command: String
-    @State private var iconPath: String?
-    @State private var icon: NSImage?
     @State private var symbol: String
+    @State private var showingSymbols = false
     private let isNew: Bool
 
     init(existing: CustomApp?, onSave: @escaping (CustomApp) -> Void, cancel: @escaping () -> Void) {
@@ -21,7 +20,6 @@ struct AppEditorView: View {
         _id = State(initialValue: existing?.id ?? UUID())
         _name = State(initialValue: existing?.name ?? "")
         _command = State(initialValue: existing?.command ?? "")
-        _iconPath = State(initialValue: existing?.iconPath)
         _symbol = State(initialValue: existing?.symbol ?? "")
     }
 
@@ -35,8 +33,14 @@ struct AppEditorView: View {
                     appPicker
                     TextField("Name", text: $name)
                     TextField("Command", text: $command)
-                    TextField("Icon: SF Symbol name (optional)", text: $symbol)
-                    Text("Use $FOLDER for the selected project folder.")
+                    HStack(spacing: 8) {
+                        TextField("Icon: SF Symbol name (optional)", text: $symbol)
+                        Button("Choose Icon...") { showingSymbols = true }
+                            .popover(isPresented: $showingSymbols, arrowEdge: .bottom) {
+                                SymbolPicker(symbol: $symbol) { showingSymbols = false }
+                            }
+                    }
+                    Text("The icon is taken from the app in the command; $FOLDER is the selected folder.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -75,7 +79,7 @@ struct AppEditorView: View {
 
     private var preview: some View {
         Group {
-            if let image = icon ?? iconPath.flatMap({ NSImage(contentsOfFile: $0) }) {
+            if let image = AppIcons.icon(inCommand: command) {
                 Image(nsImage: image).resizable().interpolation(.high).frame(width: 48, height: 48)
             } else if let image = NSImage(systemSymbolName: trimmedSymbol, accessibilityDescription: nil) {
                 Image(nsImage: image).resizable().interpolation(.high).frame(width: 36, height: 36)
@@ -95,36 +99,11 @@ struct AppEditorView: View {
     private func apply(_ app: InstalledApp) {
         name = app.name
         command = "open -a " + LaunchText.shellQuote(app.url.path) + " \"$FOLDER\""
-        icon = app.icon
         symbol = ""
     }
 
     private func save() {
-        var app = CustomApp(id: id, name: trimmedName, command: trimmedCommand,
-                            iconPath: iconPath, symbol: trimmedSymbol.isEmpty ? nil : trimmedSymbol)
-        if let icon, let path = AppIconStore.write(icon, id: id) {
-            app.iconPath = path
-        }
-        onSave(app)
-    }
-}
-
-enum AppIconStore {
-    static var directory: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/ProjectBar/icons")
-    }
-
-    static func write(_ image: NSImage, id: UUID) -> String? {
-        guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
-              let png = bitmap.representation(using: .png, properties: [:]) else { return nil }
-        let url = directory.appendingPathComponent("\(id.uuidString.lowercased()).png")
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try png.write(to: url, options: .atomic)
-            return url.path
-        } catch {
-            return nil
-        }
+        onSave(CustomApp(id: id, name: trimmedName, command: trimmedCommand,
+                         symbol: trimmedSymbol.isEmpty ? nil : trimmedSymbol))
     }
 }

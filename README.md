@@ -1,11 +1,10 @@
 # Pastir
 
-A native Swift macOS project bar with Herdr, Fork, and VS Code launch buttons.
+A native Swift macOS project bar that launches apps for the selected project.
 The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, with its leading edge at 65% of the screen width, clamped inside the menu-bar area.
 On displays with a camera notch it uses an unobscured area beside the notch.
 A folder dropdown selects the current project.
-App buttons use icons with names shown on hover.
-Custom apps can be added with their own icon, name, and command.
+Apps are fully user-defined and saved in config; buttons use icons with names shown on hover.
 
 ## Build and run
 
@@ -24,25 +23,20 @@ The shepherd app icon is stored in `Resources/PastirIcon.png`.
 The build generates standard and Retina icon sizes and packages them as `Pastir.icns` in the app bundle.
 Its image-generation prompt is recorded in `Resources/PastirIcon.prompt.txt`.
 
-Click **+** to add one or more project folders.
-Choose a project from the folder dropdown, then **Herdr**, **Fork**, or **VS Code**.
+Choose a project from the folder dropdown, then click an app button to run it for that folder.
 The dropdown ends with **Add folder to bottom**, which appends another folder.
-The **+** after the app buttons opens an app editor: pick an installed app to prefill name, icon, and command, or set them yourself.
+The **Add application** and **Edit applications** menu items open the app editor and the applications manager.
+Adding one lets you pick an installed app to prefill name and command, or set them yourself.
+An app's icon is taken from the app in its command; if that fails it falls back to an SF Symbol.
 The command runs through a login shell with the selected folder in `FOLDER`, so `$FOLDER` expands to that folder's path.
-Right-click a custom app button to edit or remove it.
+Right-click an app button to edit or remove it.
 Right-click the bar to slide it up and hide it for five seconds, then it slides back down.
 The ellipsis menu and menu-bar icon include a Quit action.
 
-Herdr requires permission to control Terminal under Privacy & Security > Automation; macOS requests this when you first use its button.
-
-Fork and VS Code receive the selected folder through their normal macOS open-document APIs, which let them focus an existing project or open it.
-Herdr uses a dedicated Terminal window with a stable named Herdr session per project and reuses that window on subsequent clicks.
-Herdr is discovered in `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`.
+There are no built-in apps: the bar shows only the applications you define.
 
 Projects are saved to `~/Library/Application Support/ProjectBar/projects.json`.
-Custom apps are saved to `~/Library/Application Support/ProjectBar/apps.json` and their icons to the `icons` folder beside it.
-The bundle identifier, saved-project location, and Herdr session IDs stay stable across app renames.
-Removing a project does not delete its folder or stop its apps or Herdr session.
+Applications are saved to `~/Library/Application Support/ProjectBar/apps.json`.
 Quitting Pastir leaves other apps running.
 
 ## Limitations

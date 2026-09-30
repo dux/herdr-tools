@@ -28,27 +28,24 @@ import Testing
 
 @Test func shellArgumentsPreserveMetacharacters() {
     #expect(LaunchText.shellQuote("/a/b's $(touch nope)`hello`") == "'/a/b'\\''s $(touch nope)`hello`'")
-    #expect(LaunchText.appleScriptQuote("a\"b\\c\nd") == "\"a\\\"b\\\\c\\nd\"")
 }
 
-@Test func duplicateFolderNamesHaveDifferentSessions() {
+@Test func duplicateFolderNamesKeepDistinctIdentity() {
     let a = Project(url: URL(fileURLWithPath: "/one/repo"))
     let b = Project(url: URL(fileURLWithPath: "/two/repo"))
     #expect(a.name == b.name)
-    #expect(a.sessionName != b.sessionName)
-    #expect(a.terminalTitle != b.terminalTitle)
+    #expect(a.id != b.id)
 }
 
 @Test func projectIdentitySurvivesPersistence() throws {
     let project = Project(url: URL(fileURLWithPath: "/projects/my app"))
     let restored = try JSONDecoder().decode(Project.self, from: JSONEncoder().encode(project))
     #expect(project == restored)
-    #expect(project.sessionName == restored.sessionName)
 }
 
 @Test func customAppSurvivesPersistence() throws {
     let app = CustomApp(name: "Fork", command: "open -a '/Applications/Fork.app' \"$FOLDER\"",
-                        iconPath: "/tmp/fork.png")
+                        symbol: "arrow.triangle.branch")
     let restored = try JSONDecoder().decode(CustomApp.self, from: JSONEncoder().encode(app))
     #expect(app == restored)
 }

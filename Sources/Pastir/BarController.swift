@@ -22,6 +22,7 @@ import PastirCore
     private var peekTask: Task<Void, Never>?
     private var rightClickMonitor: Any?
     private var appEditor: AppEditorWindow?
+    private var appManager: AppManagerWindow?
     private var projectStripWidth: CGFloat = 0
 
     init(projects: ProjectStore, launcher: AppLauncher, apps: AppStore) {
@@ -84,19 +85,24 @@ import PastirCore
         rightClickMonitor = nil
     }
 
-    private func launch(_ target: TargetApp) {
-        guard launcher.launching == nil, let project = projects.selected else { return }
-        launchTask = Task { await launcher.open(target, project: project) }
-    }
-
     private func launchCustom(_ app: CustomApp) {
         guard launcher.launching == nil, let project = projects.selected else { return }
-        launchTask = Task { await launcher.openCustom(app, project: project) }
+        launchTask = Task { await launcher.open(app, project: project) }
     }
 
     func addCustomApp() { presentAppEditor(existing: nil) }
 
     private func editCustomApp(_ app: CustomApp) { presentAppEditor(existing: app) }
+
+    private func showAppManager() {
+        appManager?.close()
+        appManager = AppManagerWindow(
+            apps: apps,
+            add: { [weak self] in self?.addCustomApp() },
+            edit: { [weak self] app in self?.editCustomApp(app) },
+            onClose: { [weak self] in self?.appManager = nil })
+        appManager?.show()
+    }
 
     private func presentAppEditor(existing: CustomApp?) {
         appEditor?.close()
@@ -114,9 +120,9 @@ import PastirCore
         BarView(projects: projects, launcher: launcher, apps: apps, projectStripWidth: projectWidth,
                 addFolder: { [weak self] in self?.addFolder() },
                 addApp: { [weak self] in self?.addCustomApp() },
+                manageApps: { [weak self] in self?.showAppManager() },
                 editApp: { [weak self] app in self?.editCustomApp(app) },
                 removeApp: { [weak self] app in self?.apps.remove(app.id) },
-                launch: { [weak self] target in self?.launch(target) },
                 launchCustom: { [weak self] app in self?.launchCustom(app) })
     }
 
@@ -138,8 +144,7 @@ import PastirCore
     private func customAppsRange() -> ClosedRange<CGFloat>? {
         let count = apps.apps.count
         guard count > 0 else { return nil }
-        let builtinEnd = 8 + 18 + 6 + projectStripWidth + 6 + 1 + 6 + (3 * 24 + 2 * 6)
-        let start = builtinEnd + 6
+        let start = 8 + 18 + 6 + projectStripWidth + 6 + 1 + 6
         return start...(start + CGFloat(count) * 24 + CGFloat(count - 1) * 6)
     }
 
@@ -182,7 +187,7 @@ import PastirCore
         let font = NSFont.systemFont(ofSize: 11, weight: .medium)
         let name = projects.selected?.name ?? "Add a project"
         let projectWidth = ceil((name as NSString).size(withAttributes: [.font: font]).width) + 48
-        let controls: CGFloat = 191 + CGFloat(apps.apps.count) * 30
+        let controls: CGFloat = 75 + CGFloat(apps.apps.count) * 30
         let maximum = min(800, topArea(screen: screen).width - 16)
         let stripWidth = max(0, min(projectWidth, maximum - controls))
         return (controls + stripWidth, stripWidth)

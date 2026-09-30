@@ -8,9 +8,9 @@ struct BarView: View {
     let projectStripWidth: CGFloat
     let addFolder: () -> Void
     let addApp: () -> Void
+    let manageApps: () -> Void
     let editApp: (CustomApp) -> Void
     let removeApp: (CustomApp) -> Void
-    let launch: (TargetApp) -> Void
     let launchCustom: (CustomApp) -> Void
 
     var body: some View {
@@ -55,30 +55,12 @@ struct BarView: View {
             .help(projects.selected?.path ?? "Choose a project folder")
             Divider().frame(width: 1, height: 14)
 
-            ForEach(TargetApp.allCases) { target in
-                Button { launch(target) } label: {
-                    Group {
-                        if launcher.launching == .builtin(target) {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Image(systemName: target.symbol)
-                        }
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 24, height: 22)
-                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 7))
-                }
-                .buttonStyle(.plain)
-                .help(target.title)
-                .accessibilityLabel(target.title)
-                .disabled(projects.selected == nil || launcher.launching != nil)
-            }
             ForEach(apps.apps) { app in
                 Button { launchCustom(app) } label: {
                     Group {
-                        if launcher.launching == .custom(app.id) {
+                        if launcher.launching == app.id {
                             ProgressView().controlSize(.mini)
-                        } else if let path = app.iconPath, let image = NSImage(contentsOfFile: path) {
+                        } else if let image = AppIcons.icon(for: app) {
                             Image(nsImage: image).resizable().interpolation(.high).frame(width: 16, height: 16)
                         } else {
                             Image(systemName: app.symbol.flatMap { $0.isEmpty ? nil : $0 } ?? "app")
@@ -97,10 +79,10 @@ struct BarView: View {
                     Button("Remove from bar", role: .destructive) { removeApp(app) }
                 }
             }
-            Button(action: addApp) { Image(systemName: "plus").frame(width: 20, height: 22) }
-                .buttonStyle(.plain).help("Add app")
             Menu {
                 Button("Add project folder...", action: addFolder)
+                Button("Add application", action: addApp)
+                Button("Edit applications", action: manageApps)
                 Divider()
                 Button("Quit Pastir") { NSApp.terminate(nil) }
             } label: { Image(systemName: "ellipsis").frame(width: 22, height: 22) }
