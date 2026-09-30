@@ -9,6 +9,15 @@
 * On notched displays it sits in the unobscured area beside the notch.
 * Apps are user-defined in config; hover a button to see its name.
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/dux/herdr-tools/main/install.sh | sh
+```
+
+Downloads the latest release, checks its SHA-256 checksum and bundle identifier, verifies the code signature, clears the quarantine flag, installs to `/Applications`, and launches it.
+Releases are universal binaries for macOS 14 or later (Apple Silicon and Intel).
+
 ## Build and run
 
 Requires macOS 14 or later, Swift 6, and the `hammer` task runner.

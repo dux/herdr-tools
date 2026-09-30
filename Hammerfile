@@ -29,3 +29,47 @@ task :test do
   desc 'Run the Swift tests'
   proc { sh 'swift test' }
 end
+
+task :version do
+  desc 'Stamp .version with the commit count on main, then print it'
+  proc do
+    ref = system('git rev-parse --verify -q main >/dev/null 2>&1') ? 'main' : 'HEAD'
+    count = `git rev-list --count #{ref}`.strip
+    error 'could not count commits' unless count.match?(/\A\d+\z/)
+    File.write('.version', "v#{count}\n")
+    say `zsh tools/version.sh`.strip
+  end
+end
+
+task :deploy do
+  desc 'Push, then publish a universal macOS release, keeping only the latest'
+  proc do
+    asset = 'Herdr_Tools.zip'
+
+    ENV['UNIVERSAL'] = '1'
+    sh 'zsh build.sh'
+    ENV.delete('UNIVERSAL')
+
+    tag = `zsh tools/version.sh`.strip
+    error 'could not determine version' unless tag.match?(/\Av\d+\.\d+\.\d+\z/)
+    version = tag.delete_prefix('v')
+
+    zip = "build/#{asset}"
+    File.delete(zip) if File.exist?(zip)
+    sh "ditto -c -k --keepParent build/Herdr_Tools.app #{zip}"
+    digest = `shasum -a 256 #{zip}`.split.first
+    error 'shasum failed' unless digest
+    File.write("build/#{asset}.sha256", "#{digest}  #{asset}\n")
+
+    sh 'git push origin HEAD'
+
+    `gh release list --limit 100 --json tagName --jq '.[].tagName'`.split.each do |old|
+      sh "gh release delete #{old} --yes --cleanup-tag"
+      `git tag -d #{old} 2>/dev/null`
+    end
+
+    sh "gh release create #{tag} #{zip} build/#{asset}.sha256 " \
+       "--title 'Herdr Tools #{version}' --generate-notes --latest"
+    say.green "Released #{tag}"
+  end
+end
