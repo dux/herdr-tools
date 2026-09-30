@@ -1,5 +1,7 @@
 # Pastir
 
+![Pastir bar](docs/bar.png)
+
 A native Swift macOS bar that launches apps for the folder focused in Herdr.
 The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, starting at 65% of the screen width and clamped inside the menu-bar area.
 The leading icon is the Herdr logo; drag it left or right to move the bar, and the position is remembered.
