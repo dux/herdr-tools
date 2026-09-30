@@ -40,7 +40,7 @@ struct AppEditorView: View {
                                 SymbolPicker(symbol: $symbol) { showingSymbols = false }
                             }
                     }
-                    Text("The icon is taken from the app in the command; $FOLDER is the selected folder.")
+                    Text("The icon comes from the app in the command; $FOLDER is the folder focused in Herdr.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

@@ -30,17 +30,32 @@ import Testing
     #expect(LaunchText.shellQuote("/a/b's $(touch nope)`hello`") == "'/a/b'\\''s $(touch nope)`hello`'")
 }
 
-@Test func duplicateFolderNamesKeepDistinctIdentity() {
-    let a = Project(url: URL(fileURLWithPath: "/one/repo"))
-    let b = Project(url: URL(fileURLWithPath: "/two/repo"))
-    #expect(a.name == b.name)
-    #expect(a.id != b.id)
+@Test func homePathsAreAbbreviated() {
+    #expect(LaunchText.abbreviateHome("/Users/me/dev/app", home: "/Users/me") == "~/dev/app")
+    #expect(LaunchText.abbreviateHome("/Users/me", home: "/Users/me") == "~")
+    #expect(LaunchText.abbreviateHome("/other/app", home: "/Users/me") == "/other/app")
+    #expect(LaunchText.abbreviateHome("/Users/melon", home: "/Users/me") == "/Users/melon")
 }
 
-@Test func projectIdentitySurvivesPersistence() throws {
-    let project = Project(url: URL(fileURLWithPath: "/projects/my app"))
-    let restored = try JSONDecoder().decode(Project.self, from: JSONEncoder().encode(project))
-    #expect(project == restored)
+@Test func focusedPaneFolderPrefersForegroundCwd() {
+    let json = """
+    {"result":{"panes":[
+      {"focused":false,"foreground_cwd":"/one","cwd":"/one"},
+      {"focused":true,"foreground_cwd":"/two","cwd":"/also-two"}
+    ]}}
+    """
+    #expect(HerdrPanes.focusedFolder(json: json) == "/two")
+}
+
+@Test func focusedPaneFolderFallsBackToCwd() {
+    let json = #"{"result":{"panes":[{"focused":true,"cwd":"/only"}]}}"#
+    #expect(HerdrPanes.focusedFolder(json: json) == "/only")
+}
+
+@Test func missingFocusedPaneReturnsNil() {
+    let json = #"{"result":{"panes":[{"focused":false,"cwd":"/one"}]}}"#
+    #expect(HerdrPanes.focusedFolder(json: json) == nil)
+    #expect(HerdrPanes.focusedFolder(json: "not json") == nil)
 }
 
 @Test func customAppSurvivesPersistence() throws {

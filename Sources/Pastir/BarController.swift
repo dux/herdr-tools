@@ -13,7 +13,6 @@ import PastirCore
 }
 
 @MainActor final class BarController {
-    private let projects: ProjectStore
     private let launcher: AppLauncher
     private let apps: AppStore
     private var panel: NSPanel?
@@ -23,28 +22,25 @@ import PastirCore
     private var rightClickMonitor: Any?
     private var appEditor: AppEditorWindow?
     private var appManager: AppManagerWindow?
-    private var projectStripWidth: CGFloat = 0
 
-    init(projects: ProjectStore, launcher: AppLauncher, apps: AppStore) {
-        self.projects = projects
+    init(launcher: AppLauncher, apps: AppStore) {
         self.launcher = launcher
         self.apps = apps
     }
 
     func show() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
-        let metrics = contentMetrics(screen: screen)
-        let layout = layout(screen: screen, width: metrics.width)
-        projectStripWidth = metrics.projects
+        let layout = layout(screen: screen, width: contentMetrics(screen: screen))
         let panel = NSPanel(contentRect: layout.bar,
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
         panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true
         panel.isOpaque = false
+        panel.acceptsMouseMovedEvents = true
         panel.backgroundColor = .clear
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        let content = BarHostingView(rootView: makeView(projectWidth: metrics.projects))
+        let content = BarHostingView(rootView: makeView())
         content.sizingOptions = []
         content.onRightClick = { [weak self] event in self?.handleRightClick(event) ?? false }
         panel.contentView = content
@@ -58,24 +54,9 @@ import PastirCore
 
     func updateScreen() {
         guard let screen = panel?.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
-        let metrics = contentMetrics(screen: screen)
-        let layout = layout(screen: screen, width: metrics.width)
-        projectStripWidth = metrics.projects
-        content?.rootView = makeView(projectWidth: metrics.projects)
+        let layout = layout(screen: screen, width: contentMetrics(screen: screen))
+        content?.rootView = makeView()
         if peekTask == nil { panel?.setFrame(layout.bar, display: true) }
-    }
-
-    func addFolder() {
-        let picker = NSOpenPanel()
-        picker.title = "Add project folder"
-        picker.prompt = "Add Project"
-        picker.canChooseDirectories = true
-        picker.canChooseFiles = false
-        picker.allowsMultipleSelection = true
-        NSApp.activate()
-        if picker.runModal() == .OK {
-            for url in picker.urls { projects.add(url) }
-        }
     }
 
     func stop() {
@@ -86,8 +67,12 @@ import PastirCore
     }
 
     private func launchCustom(_ app: CustomApp) {
-        guard launcher.launching == nil, let project = projects.selected else { return }
-        launchTask = Task { await launcher.open(app, project: project) }
+        guard launcher.launching == nil else { return }
+        launchTask = Task { await launcher.open(app) }
+    }
+
+    private func copyFolder() {
+        Task { await launcher.copyFocusedFolder() }
     }
 
     func addCustomApp() { presentAppEditor(existing: nil) }
@@ -116,9 +101,9 @@ import PastirCore
         appEditor?.show()
     }
 
-    private func makeView(projectWidth: CGFloat) -> BarView {
-        BarView(projects: projects, launcher: launcher, apps: apps, projectStripWidth: projectWidth,
-                addFolder: { [weak self] in self?.addFolder() },
+    private func makeView() -> BarView {
+        BarView(launcher: launcher, apps: apps,
+                copyFolder: { [weak self] in self?.copyFolder() },
                 addApp: { [weak self] in self?.addCustomApp() },
                 manageApps: { [weak self] in self?.showAppManager() },
                 editApp: { [weak self] app in self?.editCustomApp(app) },
@@ -144,7 +129,7 @@ import PastirCore
     private func customAppsRange() -> ClosedRange<CGFloat>? {
         let count = apps.apps.count
         guard count > 0 else { return nil }
-        let start = 8 + 18 + 6 + projectStripWidth + 6 + 1 + 6
+        let start: CGFloat = 8 + 18 + 6 + 24 + 6
         return start...(start + CGFloat(count) * 24 + CGFloat(count - 1) * 6)
     }
 
@@ -183,20 +168,13 @@ import PastirCore
         BarLayout(screenFrame: screen.frame, contentWidth: width, topArea: topArea(screen: screen))
     }
 
-    private func contentMetrics(screen: NSScreen) -> (width: CGFloat, projects: CGFloat) {
-        let font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        let name = projects.selected?.name ?? "Add a project"
-        let projectWidth = ceil((name as NSString).size(withAttributes: [.font: font]).width) + 48
-        let controls: CGFloat = 75 + CGFloat(apps.apps.count) * 30
-        let maximum = min(800, topArea(screen: screen).width - 16)
-        let stripWidth = max(0, min(projectWidth, maximum - controls))
-        return (controls + stripWidth, stripWidth)
+    private func contentMetrics(screen: NSScreen) -> CGFloat {
+        let controls = 98 + CGFloat(apps.apps.count) * 30
+        return min(controls, min(800, topArea(screen: screen).width - 16))
     }
 
     private func observeLayout() {
         withObservationTracking {
-            _ = projects.projects
-            _ = projects.selectedID
             _ = apps.apps
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
@@ -209,14 +187,12 @@ import PastirCore
 
     private func observeMessages() {
         withObservationTracking {
-            _ = projects.message
             _ = launcher.message
             _ = apps.message
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let message = self.projects.message ?? self.launcher.message ?? self.apps.message
-                self.projects.message = nil
+                let message = self.launcher.message ?? self.apps.message
                 self.launcher.message = nil
                 self.apps.message = nil
                 self.observeMessages()

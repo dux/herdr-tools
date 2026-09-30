@@ -34,6 +34,11 @@ import PastirCore
         scheduleSave()
     }
 
+    func move(from source: IndexSet, to destination: Int) {
+        apps.move(fromOffsets: source, toOffset: destination)
+        scheduleSave()
+    }
+
     func flush() async -> Bool {
         saveTask?.cancel()
         do {

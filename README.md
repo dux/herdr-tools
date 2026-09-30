@@ -1,9 +1,8 @@
 # Pastir
 
-A native Swift macOS project bar that launches apps for the selected project.
+A native Swift macOS bar that launches apps for the folder focused in Herdr.
 The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, with its leading edge at 65% of the screen width, clamped inside the menu-bar area.
 On displays with a camera notch it uses an unobscured area beside the notch.
-A folder dropdown selects the current project.
 Apps are fully user-defined and saved in config; buttons use icons with names shown on hover.
 
 ## Build and run
@@ -23,19 +22,19 @@ The shepherd app icon is stored in `Resources/PastirIcon.png`.
 The build generates standard and Retina icon sizes and packages them as `Pastir.icns` in the app bundle.
 Its image-generation prompt is recorded in `Resources/PastirIcon.prompt.txt`.
 
-Choose a project from the folder dropdown, then click an app button to run it for that folder.
-The dropdown ends with **Add folder to bottom**, which appends another folder.
-The **Add application** and **Edit applications** menu items open the app editor and the applications manager.
+The first button is built in and copies the Herdr focused folder path to the clipboard.
+Click an app button to run it for the folder focused in Herdr.
+The folder is read fresh on every click from `herdr pane list` (the focused pane's `foreground_cwd`, falling back to `cwd`), and is passed to the command in `FOLDER`, so `$FOLDER` expands to it.
+If Herdr has no focused pane, Pastir shows an alert instead of launching.
+The **Add application** and **Edit applications** menu items open the app editor and the applications manager, where you can edit, remove, and drag to reorder apps.
 Adding one lets you pick an installed app to prefill name and command, or set them yourself.
 An app's icon is taken from the app in its command; if that fails it falls back to an SF Symbol.
-The command runs through a login shell with the selected folder in `FOLDER`, so `$FOLDER` expands to that folder's path.
 Right-click an app button to edit or remove it.
 Right-click the bar to slide it up and hide it for five seconds, then it slides back down.
 The ellipsis menu and menu-bar icon include a Quit action.
 
-There are no built-in apps: the bar shows only the applications you define.
+There are no built-in apps or saved folders: the bar shows only the applications you define.
 
-Projects are saved to `~/Library/Application Support/ProjectBar/projects.json`.
 Applications are saved to `~/Library/Application Support/ProjectBar/apps.json`.
 Quitting Pastir leaves other apps running.
 
@@ -52,4 +51,4 @@ hammer build
 codesign --verify --strict build/Pastir.app
 ```
 
-The automated tests cover bar layout, notch-aware placement, safe command quoting, and stable project identity.
+The automated tests cover bar layout, notch-aware placement, safe command quoting, and Herdr focused-folder parsing.
