@@ -4,9 +4,14 @@ import PastirCore
 struct BarView: View {
     let projects: ProjectStore
     let launcher: AppLauncher
+    let apps: AppStore
     let projectStripWidth: CGFloat
     let addFolder: () -> Void
+    let addApp: () -> Void
+    let editApp: (CustomApp) -> Void
+    let removeApp: (CustomApp) -> Void
     let launch: (TargetApp) -> Void
+    let launchCustom: (CustomApp) -> Void
 
     var body: some View {
         HStack(spacing: 6) {
@@ -15,45 +20,45 @@ struct BarView: View {
                 .frame(width: 18, height: 18)
                 .help("Pastir")
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    if projects.projects.isEmpty {
-                        Text("Add a project")
-                            .font(.system(size: 11)).foregroundStyle(.secondary)
-                    }
-                    ForEach(projects.projects) { project in
-                        Button { projects.select(project.id) } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "folder").frame(width: 12)
-                                Text(project.name).lineLimit(1).fixedSize()
-                            }
-                                .font(.system(size: 11, weight: .medium))
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(projects.selectedID == project.id ? Color.mint.opacity(0.16) : Color.clear,
-                                            in: RoundedRectangle(cornerRadius: 7))
-                                .foregroundStyle(projects.selectedID == project.id ? Color.mint : Color.primary)
-                        }
-                        .buttonStyle(.plain)
-                        .help(project.path)
-                        .contextMenu {
-                            Button("Show in Finder") {
-                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: project.path)
-                            }
-                            Button("Remove from bar", role: .destructive) { projects.remove(project.id) }
+            Menu {
+                ForEach(projects.projects) { project in
+                    Button {
+                        projects.select(project.id)
+                    } label: {
+                        if projects.selectedID == project.id {
+                            Label(project.name, systemImage: "checkmark")
+                        } else {
+                            Text(project.name)
                         }
                     }
                 }
+                if projects.projects.isEmpty {
+                    Text("No folders")
+                }
+                Divider()
+                Button("Add folder to bottom", action: addFolder)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                    Text(projects.selected?.name ?? "Add a project")
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.down").font(.system(size: 8, weight: .semibold))
+                }
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Color.mint.opacity(0.16), in: RoundedRectangle(cornerRadius: 7))
+                    .foregroundStyle(.mint)
             }
-            .frame(width: projectStripWidth)
-            Button(action: addFolder) { Image(systemName: "plus").frame(width: 20, height: 22) }
-                .buttonStyle(.plain).help("Add project folder")
-                .disabled(projects.isLoading)
+            .menuStyle(.borderlessButton).menuIndicator(.hidden)
+            .frame(width: projectStripWidth, alignment: .leading)
+            .help(projects.selected?.path ?? "Choose a project folder")
             Divider().frame(width: 1, height: 14)
 
             ForEach(TargetApp.allCases) { target in
                 Button { launch(target) } label: {
                     Group {
-                        if launcher.launching == target {
+                        if launcher.launching == .builtin(target) {
                             ProgressView().controlSize(.mini)
                         } else {
                             Image(systemName: target.symbol)
@@ -68,18 +73,34 @@ struct BarView: View {
                 .accessibilityLabel(target.title)
                 .disabled(projects.selected == nil || launcher.launching != nil)
             }
-            if !launcher.hasWindowAccess {
-                Button(action: launcher.enableAccess) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange).frame(width: 20, height: 22)
+            ForEach(apps.apps) { app in
+                Button { launchCustom(app) } label: {
+                    Group {
+                        if launcher.launching == .custom(app.id) {
+                            ProgressView().controlSize(.mini)
+                        } else if let path = app.iconPath, let image = NSImage(contentsOfFile: path) {
+                            Image(nsImage: image).resizable().interpolation(.high).frame(width: 16, height: 16)
+                        } else {
+                            Image(systemName: "app")
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 24, height: 22)
+                    .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 7))
                 }
                 .buttonStyle(.plain)
-                .help("Enable Window Control")
-                .accessibilityLabel("Enable Window Control")
+                .help(app.name)
+                .accessibilityLabel(app.name)
+                .disabled(projects.selected == nil || launcher.launching != nil)
+                .contextMenu {
+                    Button("Edit...") { editApp(app) }
+                    Button("Remove from bar", role: .destructive) { removeApp(app) }
+                }
             }
+            Button(action: addApp) { Image(systemName: "plus").frame(width: 20, height: 22) }
+                .buttonStyle(.plain).help("Add app")
             Menu {
                 Button("Add project folder...", action: addFolder)
-                Button("Enable Window Control", action: launcher.enableAccess)
                 Divider()
                 Button("Quit Pastir") { NSApp.terminate(nil) }
             } label: { Image(systemName: "ellipsis").frame(width: 22, height: 22) }

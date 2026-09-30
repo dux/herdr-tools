@@ -3,35 +3,27 @@ import CoreGraphics
 import Testing
 @testable import PastirCore
 
-@Test func compactBarOverlaysMenuAndRespectsDock() {
-    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900),
-                           visibleFrame: CGRect(x: 0, y: 70, width: 1440, height: 805), contentWidth: 300)
-    #expect(layout.bar == CGRect(x: 570, y: 872, width: 300, height: 28))
-    #expect(layout.application == CGRect(x: 0, y: 70, width: 1440, height: 802))
-    #expect(layout.accessibilityFrame(primaryScreenTop: 900) == CGRect(x: 0, y: 28, width: 1440, height: 802))
-}
-
-@Test func secondaryScreenCoordinateConversion() {
-    let screen = CGRect(x: -1920, y: 900, width: 1920, height: 1080)
-    let layout = BarLayout(screenFrame: screen, visibleFrame: screen, contentWidth: 300)
-    #expect(layout.accessibilityFrame(primaryScreenTop: 900) == CGRect(x: -1920, y: -1052, width: 1920, height: 1052))
+@Test func compactBarSitsAtTop() {
+    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900), contentWidth: 300)
+    #expect(layout.bar == CGRect(x: 936, y: 872, width: 300, height: 28))
 }
 
 @Test func notchAreaKeepsCompactBarVisible() {
     let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
     let left = CGRect(x: 0, y: 868, width: 650, height: 32)
-    let layout = BarLayout(screenFrame: screen, visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 868),
-                           contentWidth: 800, topArea: left)
+    let layout = BarLayout(screenFrame: screen, contentWidth: 800, topArea: left)
     #expect(layout.bar.width == 634)
     #expect(left.contains(layout.bar))
-    #expect(layout.application.maxY == 868)
 }
 
-@Test func normalMenuBarDoesNotAddAnotherStripeMargin() {
-    let visible = CGRect(x: 0, y: 70, width: 1440, height: 798)
-    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900),
-                           visibleFrame: visible, contentWidth: 300)
-    #expect(layout.application == visible)
+@Test func barLeadingEdgeAnchorsAtSixtyFivePercent() {
+    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1600, height: 900), contentWidth: 400)
+    #expect(layout.bar.minX == 1040)
+}
+
+@Test func wideBarIsClampedInsideTheTopArea() {
+    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900), contentWidth: 800)
+    #expect(layout.bar.minX == 640)
 }
 
 @Test func shellArgumentsPreserveMetacharacters() {
@@ -54,10 +46,9 @@ import Testing
     #expect(project.sessionName == restored.sessionName)
 }
 
-@Test func windowNamesMustMatchCompleteProjectNames() {
-    #expect(WindowTitle.matches("main.swift - app - Visual Studio Code", projectName: "app"))
-    #expect(!WindowTitle.matches("main.swift - myapp - Visual Studio Code", projectName: "app"))
-    #expect(WindowTitle.matches("my-app [main]", projectName: "my-app"))
-    #expect(WindowTitle.matches("file - Project (2) - VS Code", projectName: "Project (2)"))
-    #expect(!WindowTitle.matches("file - Project 222 - VS Code", projectName: "Project (2)"))
+@Test func customAppSurvivesPersistence() throws {
+    let app = CustomApp(name: "Fork", command: "open -a '/Applications/Fork.app' \"$FOLDER\"",
+                        iconPath: "/tmp/fork.png")
+    let restored = try JSONDecoder().decode(CustomApp.self, from: JSONEncoder().encode(app))
+    #expect(app == restored)
 }

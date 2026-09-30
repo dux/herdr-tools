@@ -1,11 +1,11 @@
 # Pastir
 
 A native Swift macOS project bar with Herdr, Fork, and VS Code launch buttons.
-The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, over the center of the macOS menu-bar area.
+The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, with its leading edge at 65% of the screen width, clamped inside the menu-bar area.
 On displays with a camera notch it uses an unobscured area beside the notch.
-Project tabs scroll when the bar reaches its maximum width.
+A folder dropdown selects the current project.
 App buttons use icons with names shown on hover.
-App windows use the usable screen area below the bar, respecting the Dock and any taller system menu bar.
+Custom apps can be added with their own icon, name, and command.
 
 ## Build and run
 
@@ -16,7 +16,7 @@ hammer install
 hammer run
 ```
 
-`hammer install` builds and signs Pastir, copies it to `/Applications/Pastir.app`, and verifies the installed bundle's signature.
+`hammer install` builds and signs Pastir, copies it to `/Applications/Pastir.app`, verifies the installed bundle's signature, then quits any running copy and launches the fresh build.
 Use `hammer build` to build `build/Pastir.app` without installing.
 Run `hammer` to list the available tasks.
 
@@ -25,37 +25,30 @@ The build generates standard and Retina icon sizes and packages them as `Pastir.
 Its image-generation prompt is recorded in `Resources/PastirIcon.prompt.txt`.
 
 Click **+** to add one or more project folders.
-Click a project tab, then **Herdr**, **Fork**, or **VS Code**.
-Right-click a project to reveal its folder or remove it from the bar.
-Right-click anywhere else on the bar to slide it up and hide it for five seconds, then it slides back down.
+Choose a project from the folder dropdown, then **Herdr**, **Fork**, or **VS Code**.
+The dropdown ends with **Add folder to bottom**, which appends another folder.
+The **+** after the app buttons opens an app editor: pick an installed app to prefill name, icon, and command, or set them yourself.
+The command runs through a login shell with the selected folder in `FOLDER`, so `$FOLDER` expands to that folder's path.
+Right-click a custom app button to edit or remove it.
+Right-click the bar to slide it up and hide it for five seconds, then it slides back down.
 The ellipsis menu and menu-bar icon include a Quit action.
 
-Click **Enable Window Control** and allow Pastir in System Settings > Privacy & Security > Accessibility.
-Herdr also requires permission to control Terminal under Privacy & Security > Automation; macOS requests this when you first use its button.
-Once a window is opened or focused through Pastir, maximizing it fits it below the stripe.
-Entering native macOS full-screen mode is converted back into an ordinary maximized window where the app exposes a writable full-screen Accessibility attribute.
-macOS may briefly animate into and out of a full-screen Space during this conversion.
-Smaller windows remain freely movable and resizable.
-Window monitoring stops when Pastir quits.
+Herdr requires permission to control Terminal under Privacy & Security > Automation; macOS requests this when you first use its button.
 
 Fork and VS Code receive the selected folder through their normal macOS open-document APIs, which let them focus an existing project or open it.
 Herdr uses a dedicated Terminal window with a stable named Herdr session per project and reuses that window on subsequent clicks.
 Herdr is discovered in `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`.
 
 Projects are saved to `~/Library/Application Support/ProjectBar/projects.json`.
+Custom apps are saved to `~/Library/Application Support/ProjectBar/apps.json` and their icons to the `icons` folder beside it.
 The bundle identifier, saved-project location, and Herdr session IDs stay stable across app renames.
 Removing a project does not delete its folder or stop its apps or Herdr session.
 Quitting Pastir leaves other apps running.
 
 ## Limitations
 
-App windows remain separate from the stripe.
-Window monitoring applies only to windows opened or focused through Pastir while it is running.
-Apps that do not support Accessibility resize notifications or changing their full-screen state report an error.
+Custom apps run their command directly; Pastir does not manage their windows.
 The stripe uses the display where it initially opens and adapts to display geometry changes.
-Matching uses an app window's document path or project name in its title.
-When multiple windows match, Pastir reports an error rather than moving an unrelated window.
-Some applications enforce minimum window sizes or do not expose complete Accessibility controls.
 
 ## Validation
 
@@ -65,5 +58,4 @@ hammer build
 codesign --verify --strict build/Pastir.app
 ```
 
-The automated tests cover layout, multiple-display coordinate conversion, maximizing below the stripe, preserving smaller windows, safe command quoting, and stable project identity.
-Launching and resizing third-party windows requires a live desktop and the macOS permissions above.
+The automated tests cover bar layout, notch-aware placement, safe command quoting, and stable project identity.

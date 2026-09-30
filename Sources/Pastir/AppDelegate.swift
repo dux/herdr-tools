@@ -2,18 +2,21 @@ import AppKit
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private let projects: ProjectStore
+    private let apps: AppStore
     private let launcher: AppLauncher
     private let bar: BarController
     private var statusItem: NSStatusItem?
 
     override init() {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/ProjectBar/projects.json")
-        let projects = ProjectStore(file: ProjectFile(url: url))
-        let launcher = AppLauncher(placer: WindowPlacer())
+        let directory = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/ProjectBar")
+        let projects = ProjectStore(file: ProjectFile(url: directory.appendingPathComponent("projects.json")))
+        let apps = AppStore(file: CustomAppFile(url: directory.appendingPathComponent("apps.json")))
+        let launcher = AppLauncher()
         self.projects = projects
+        self.apps = apps
         self.launcher = launcher
-        self.bar = BarController(projects: projects, launcher: launcher)
+        self.bar = BarController(projects: projects, launcher: launcher, apps: apps)
         super.init()
     }
 
@@ -31,7 +34,6 @@ import AppKit
         item.button?.toolTip = "Pastir"
         let menu = NSMenu()
         menu.addItem(withTitle: "Add project folder...", action: #selector(addProject), keyEquivalent: "")
-        menu.addItem(withTitle: "Enable Window Control", action: #selector(enableAccess), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pastir", action: #selector(quit), keyEquivalent: "q")
         for menuItem in menu.items { menuItem.target = self }
@@ -40,14 +42,12 @@ import AppKit
         bar.show()
         NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refreshAccess),
-            name: NSWorkspace.didActivateApplicationNotification, object: nil)
-        Task { await projects.load() }
+        Task { await projects.load(); await apps.load() }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         Task {
-            if await projects.flush() {
+            if await projects.flush(), await apps.flush() {
                 bar.stop()
                 sender.reply(toApplicationShouldTerminate: true)
             } else {
@@ -58,8 +58,6 @@ import AppKit
     }
 
     @objc private func addProject() { bar.addFolder() }
-    @objc private func enableAccess() { launcher.enableAccess() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func screenChanged() { bar.updateScreen() }
-    @objc private func refreshAccess() { launcher.refreshAccess() }
 }

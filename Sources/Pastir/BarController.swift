@@ -15,17 +15,18 @@ import PastirCore
 @MainActor final class BarController {
     private let projects: ProjectStore
     private let launcher: AppLauncher
+    private let apps: AppStore
     private var panel: NSPanel?
     private var content: BarHostingView?
     private var launchTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
     private var rightClickMonitor: Any?
     private var projectStripWidth: CGFloat = 0
-    private let projectStripOrigin: CGFloat = 32
 
-    init(projects: ProjectStore, launcher: AppLauncher) {
+    init(projects: ProjectStore, launcher: AppLauncher, apps: AppStore) {
         self.projects = projects
         self.launcher = launcher
+        self.apps = apps
     }
 
     func show() {
@@ -54,14 +55,12 @@ import PastirCore
     }
 
     func updateScreen() {
-        guard let screen = panel?.screen ?? NSScreen.main ?? NSScreen.screens.first,
-              let primary = NSScreen.screens.first else { return }
+        guard let screen = panel?.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         let metrics = contentMetrics(screen: screen)
         let layout = layout(screen: screen, width: metrics.width)
         projectStripWidth = metrics.projects
         content?.rootView = makeView(projectWidth: metrics.projects)
         if peekTask == nil { panel?.setFrame(layout.bar, display: true) }
-        launcher.updateFrame(layout.accessibilityFrame(primaryScreenTop: primary.frame.maxY))
     }
 
     func addFolder() {
@@ -82,22 +81,34 @@ import PastirCore
         peekTask?.cancel()
         if let rightClickMonitor { NSEvent.removeMonitor(rightClickMonitor) }
         rightClickMonitor = nil
-        launcher.stopWindowManagement()
     }
 
     private func launch(_ target: TargetApp) {
-        guard launcher.launching == nil, let project = projects.selected,
-              let screen = panel?.screen ?? NSScreen.main,
-              let primary = NSScreen.screens.first else { return }
-        let frame = layout(screen: screen, width: panel?.frame.width ?? 0)
-            .accessibilityFrame(primaryScreenTop: primary.frame.maxY)
-        launchTask = Task { await launcher.open(target, project: project, frame: frame) }
+        guard launcher.launching == nil, let project = projects.selected else { return }
+        launchTask = Task { await launcher.open(target, project: project) }
+    }
+
+    private func launchCustom(_ app: CustomApp) {
+        guard launcher.launching == nil, let project = projects.selected else { return }
+        launchTask = Task { await launcher.openCustom(app, project: project) }
+    }
+
+    private func addCustomApp() {
+        AppEditorWindow.present(existing: nil) { [weak self] app in self?.apps.add(app) }
+    }
+
+    private func editCustomApp(_ app: CustomApp) {
+        AppEditorWindow.present(existing: app) { [weak self] updated in self?.apps.update(updated) }
     }
 
     private func makeView(projectWidth: CGFloat) -> BarView {
-        BarView(projects: projects, launcher: launcher, projectStripWidth: projectWidth,
+        BarView(projects: projects, launcher: launcher, apps: apps, projectStripWidth: projectWidth,
                 addFolder: { [weak self] in self?.addFolder() },
-                launch: { [weak self] target in self?.launch(target) })
+                addApp: { [weak self] in self?.addCustomApp() },
+                editApp: { [weak self] app in self?.editCustomApp(app) },
+                removeApp: { [weak self] app in self?.apps.remove(app.id) },
+                launch: { [weak self] target in self?.launch(target) },
+                launchCustom: { [weak self] app in self?.launchCustom(app) })
     }
 
     private func installRightClickMonitor() {
@@ -110,10 +121,17 @@ import PastirCore
     private func handleRightClick(_ event: NSEvent) -> Bool {
         guard let content, event.window === panel else { return false }
         let x = content.convert(event.locationInWindow, from: nil).x
-        let overProjects = x >= projectStripOrigin && x <= projectStripOrigin + projectStripWidth
-        guard !overProjects else { return false }
+        if let customApps = customAppsRange(), customApps.contains(x) { return false }
         peek()
         return true
+    }
+
+    private func customAppsRange() -> ClosedRange<CGFloat>? {
+        let count = apps.apps.count
+        guard count > 0 else { return nil }
+        let builtinEnd = 8 + 18 + 6 + projectStripWidth + 6 + 1 + 6 + (3 * 24 + 2 * 6)
+        let start = builtinEnd + 6
+        return start...(start + CGFloat(count) * 24 + CGFloat(count - 1) * 6)
     }
 
     private func peek() {
@@ -148,21 +166,14 @@ import PastirCore
     }
 
     private func layout(screen: NSScreen, width: CGFloat) -> BarLayout {
-        BarLayout(screenFrame: screen.frame, visibleFrame: screen.visibleFrame,
-                  contentWidth: width, topArea: topArea(screen: screen))
+        BarLayout(screenFrame: screen.frame, contentWidth: width, topArea: topArea(screen: screen))
     }
 
     private func contentMetrics(screen: NSScreen) -> (width: CGFloat, projects: CGFloat) {
         let font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        let projectWidth: CGFloat
-        if projects.projects.isEmpty {
-            projectWidth = ceil(("Add a project" as NSString).size(withAttributes: [.font: font]).width)
-        } else {
-            projectWidth = projects.projects.reduce(0) { width, project in
-                width + ceil((project.name as NSString).size(withAttributes: [.font: font]).width) + 32
-            } + CGFloat(max(0, projects.projects.count - 1)) * 6
-        }
-        let controls: CGFloat = launcher.hasWindowAccess ? 191 : 217
+        let name = projects.selected?.name ?? "Add a project"
+        let projectWidth = ceil((name as NSString).size(withAttributes: [.font: font]).width) + 48
+        let controls: CGFloat = 191 + CGFloat(apps.apps.count) * 30
         let maximum = min(800, topArea(screen: screen).width - 16)
         let stripWidth = max(0, min(projectWidth, maximum - controls))
         return (controls + stripWidth, stripWidth)
@@ -171,7 +182,8 @@ import PastirCore
     private func observeLayout() {
         withObservationTracking {
             _ = projects.projects
-            _ = launcher.hasWindowAccess
+            _ = projects.selectedID
+            _ = apps.apps
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -185,12 +197,14 @@ import PastirCore
         withObservationTracking {
             _ = projects.message
             _ = launcher.message
+            _ = apps.message
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let message = self.projects.message ?? self.launcher.message
+                let message = self.projects.message ?? self.launcher.message ?? self.apps.message
                 self.projects.message = nil
                 self.launcher.message = nil
+                self.apps.message = nil
                 self.observeMessages()
                 if let message {
                     let alert = NSAlert()
