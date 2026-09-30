@@ -1,0 +1,2 @@
+The app icon is the Herdr logo with a unicorn horn, derived from
+Resources/HerdrIcon.png by tools/make_icon.py.

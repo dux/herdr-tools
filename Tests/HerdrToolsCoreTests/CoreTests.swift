@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 import Testing
-@testable import PastirCore
+@testable import HerdrToolsCore
 
 @Test func compactBarSitsAtTop() {
     let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900), contentWidth: 300)

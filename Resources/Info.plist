@@ -2,11 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleExecutable</key><string>Pastir</string>
+    <key>CFBundleExecutable</key><string>HerdrTools</string>
     <key>CFBundleIdentifier</key><string>com.dux.ProjectBar</string>
-    <key>CFBundleName</key><string>Pastir</string>
-    <key>CFBundleDisplayName</key><string>Pastir</string>
-    <key>CFBundleIconFile</key><string>Pastir.icns</string>
+    <key>CFBundleName</key><string>Herdr Tools</string>
+    <key>CFBundleDisplayName</key><string>Herdr Tools</string>
+    <key>CFBundleIconFile</key><string>HerdrTools.icns</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>2</string>

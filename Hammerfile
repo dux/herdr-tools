@@ -1,28 +1,28 @@
-desc 'Build, install, and run Pastir'
+desc 'Build, install, and run Herdr Tools'
 
 task :build do
-  desc 'Build and sign build/Pastir.app'
+  desc 'Build and sign build/Herdr_Tools.app'
   proc { sh 'zsh build.sh' }
 end
 
 task :install do
-  desc 'Build, install, and restart Pastir in /Applications'
+  desc 'Build, install, and restart Herdr Tools in /Applications'
   needs :build
   proc do
-    sh 'ditto build/Pastir.app /Applications/Pastir.app'
-    sh 'codesign --verify --strict /Applications/Pastir.app'
-    sh 'touch /Applications/Pastir.app'
-    sh '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Pastir.app'
-    sh 'pkill -x Pastir || true'
-    sh 'while pgrep -x Pastir >/dev/null; do sleep 0.1; done'
-    sh 'open /Applications/Pastir.app'
-    say.green 'Installed and restarted /Applications/Pastir.app'
+    sh 'ditto build/Herdr_Tools.app /Applications/Herdr_Tools.app'
+    sh 'codesign --verify --strict /Applications/Herdr_Tools.app'
+    sh 'touch /Applications/Herdr_Tools.app'
+    sh '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Herdr_Tools.app'
+    sh 'pkill -x HerdrTools || true'
+    sh 'while pgrep -x HerdrTools >/dev/null; do sleep 0.1; done'
+    sh 'open /Applications/Herdr_Tools.app'
+    say.green 'Installed and restarted /Applications/Herdr_Tools.app'
   end
 end
 
 task :run do
-  desc 'Open the installed Pastir app'
-  proc { sh 'open /Applications/Pastir.app' }
+  desc 'Open the installed Herdr Tools app'
+  proc { sh 'open /Applications/Herdr_Tools.app' }
 end
 
 task :test do

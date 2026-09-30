@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import PastirCore
+import HerdrToolsCore
 
 @MainActor @Observable final class AppStore {
     private(set) var apps: [CustomApp] = []

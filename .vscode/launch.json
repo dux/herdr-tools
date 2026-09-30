@@ -4,21 +4,21 @@
       "type": "swift",
       "request": "launch",
       "args": [],
-      "cwd": "${workspaceFolder:pastir}",
-      "name": "Debug Pastir",
-      "target": "Pastir",
+      "cwd": "${workspaceFolder:herdr-tools}",
+      "name": "Debug Herdr Tools",
+      "target": "HerdrTools",
       "configuration": "debug",
-      "preLaunchTask": "swift: Build Debug Pastir"
+      "preLaunchTask": "swift: Build Debug HerdrTools"
     },
     {
       "type": "swift",
       "request": "launch",
       "args": [],
-      "cwd": "${workspaceFolder:pastir}",
-      "name": "Release Pastir",
-      "target": "Pastir",
+      "cwd": "${workspaceFolder:herdr-tools}",
+      "name": "Release Herdr Tools",
+      "target": "HerdrTools",
       "configuration": "release",
-      "preLaunchTask": "swift: Build Release Pastir"
+      "preLaunchTask": "swift: Build Release HerdrTools"
     }
   ]
 }

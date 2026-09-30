@@ -1,5 +1,5 @@
 import SwiftUI
-import PastirCore
+import HerdrToolsCore
 
 struct AppManagerView: View {
     let apps: AppStore

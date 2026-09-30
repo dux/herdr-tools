@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import PastirCore
+import HerdrToolsCore
 
 enum SFSymbols {
     static let all: [String] = load()

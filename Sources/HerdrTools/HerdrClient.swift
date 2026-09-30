@@ -1,4 +1,4 @@
-import PastirCore
+import HerdrToolsCore
 
 actor HerdrClient {
     private let commands = CommandRunner()

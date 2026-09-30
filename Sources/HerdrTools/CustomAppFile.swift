@@ -1,5 +1,5 @@
 import Foundation
-import PastirCore
+import HerdrToolsCore
 
 actor CustomAppFile {
     struct Snapshot: Codable, Sendable {

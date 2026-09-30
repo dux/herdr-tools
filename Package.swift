@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "Pastir",
+    name: "HerdrTools",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Pastir", targets: ["Pastir"])],
+    products: [.executable(name: "HerdrTools", targets: ["HerdrTools"])],
     targets: [
-        .target(name: "PastirCore"),
-        .executableTarget(name: "Pastir", dependencies: ["PastirCore"]),
-        .testTarget(name: "PastirCoreTests", dependencies: ["PastirCore"])
+        .target(name: "HerdrToolsCore"),
+        .executableTarget(name: "HerdrTools", dependencies: ["HerdrToolsCore"]),
+        .testTarget(name: "HerdrToolsCoreTests", dependencies: ["HerdrToolsCore"])
     ]
 )

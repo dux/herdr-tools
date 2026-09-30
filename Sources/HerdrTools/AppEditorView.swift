@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import PastirCore
+import HerdrToolsCore
 
 struct AppEditorView: View {
     let onSave: (CustomApp) -> Void

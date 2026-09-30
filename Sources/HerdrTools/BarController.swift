@@ -1,7 +1,7 @@
 import AppKit
 import QuartzCore
 import SwiftUI
-import PastirCore
+import HerdrToolsCore
 
 @MainActor final class BarHostingView: NSHostingView<BarView> {
     var onRightClick: ((NSEvent) -> Bool)?
@@ -271,7 +271,7 @@ import PastirCore
                 self.observeMessages()
                 if let message {
                     let alert = NSAlert()
-                    alert.messageText = "Pastir"
+                    alert.messageText = "Herdr Tools"
                     alert.informativeText = message
                     NSApp.activate()
                     alert.runModal()

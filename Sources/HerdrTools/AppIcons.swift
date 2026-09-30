@@ -1,5 +1,5 @@
 import AppKit
-import PastirCore
+import HerdrToolsCore
 
 enum AppIcons {
     // The icon comes from the .app referenced by the command; callers fall

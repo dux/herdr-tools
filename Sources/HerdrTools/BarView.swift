@@ -1,5 +1,5 @@
 import SwiftUI
-import PastirCore
+import HerdrToolsCore
 
 struct BarView: View {
     let launcher: AppLauncher
@@ -67,7 +67,7 @@ struct BarView: View {
                 Button("Edit applications", action: manageApps)
                 Button("Switch display", action: switchDisplay)
                 Divider()
-                Button("Quit Pastir") { NSApp.terminate(nil) }
+                Button("Quit Herdr Tools") { NSApp.terminate(nil) }
             } label: { Image(systemName: "ellipsis").frame(width: 22, height: 22) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }

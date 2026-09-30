@@ -16,7 +16,7 @@ import AppKit
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 350])
-        if let iconURL = Bundle.main.url(forResource: "Pastir", withExtension: "icns"),
+        if let iconURL = Bundle.main.url(forResource: "HerdrTools", withExtension: "icns"),
            let icon = NSImage(contentsOf: iconURL) {
             NSApp.applicationIconImage = icon
         }

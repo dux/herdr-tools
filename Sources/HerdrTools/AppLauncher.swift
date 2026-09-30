@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import Observation
-import PastirCore
+import HerdrToolsCore
 
 @MainActor @Observable final class AppLauncher {
     private(set) var launching: UUID?
