@@ -2,7 +2,8 @@
 
 A native Swift macOS bar that launches apps for the folder focused in Herdr.
 The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, starting at 65% of the screen width and clamped inside the menu-bar area.
-Drag the Pastir icon left or right to move the bar; the position is remembered.
+The leading icon is the Herdr logo; drag it left or right to move the bar, and the position is remembered.
+**Switch display** in the ellipsis menu moves the bar to the next display and remembers it.
 On displays with a camera notch it uses an unobscured area beside the notch.
 Apps are fully user-defined and saved in config; buttons use icons with names shown on hover.
 
@@ -25,6 +26,7 @@ Its image-generation prompt is recorded in `Resources/PastirIcon.prompt.txt`.
 
 The first button is built in and copies the Herdr focused folder path to the clipboard.
 Click an app button to run it for the folder focused in Herdr.
+Pastir activates itself first so the app opens on the display where the bar is.
 The folder is read fresh on every click from `herdr pane list` (the focused pane's `foreground_cwd`, falling back to `cwd`), and is passed to the command in `FOLDER`, so `$FOLDER` expands to it.
 If Herdr has no focused pane, Pastir shows an alert instead of launching.
 The **Add application** and **Edit applications** menu items open the app editor and the applications manager, where you can edit, remove, and drag to reorder apps.
@@ -32,7 +34,7 @@ Adding one lets you pick an installed app to prefill name and command, or set th
 An app's icon is taken from the app in its command; if that fails it falls back to an SF Symbol.
 Right-click an app button to edit or remove it.
 Right-click the bar to slide it up and hide it for five seconds, then it slides back down.
-The ellipsis menu and menu-bar icon include a Quit action.
+The ellipsis menu includes a Quit action.
 
 There are no built-in apps or saved folders: the bar shows only the applications you define.
 
@@ -41,7 +43,7 @@ Quitting Pastir leaves other apps running.
 
 ## Limitations
 
-Custom apps run their command directly; Pastir does not manage their windows.
+Apps open with their own default window size; Pastir does not move or resize them.
 The stripe uses the display where it initially opens and adapts to display geometry changes.
 
 ## Validation

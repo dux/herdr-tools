@@ -13,5 +13,6 @@ done
 iconutil -c icns "$iconset_path" -o "$app_path/Contents/Resources/Pastir.icns"
 cp .build/release/Pastir "$app_path/Contents/MacOS/Pastir"
 cp Resources/Info.plist "$app_path/Contents/Info.plist"
+cp Resources/HerdrIcon.png "$app_path/Contents/Resources/HerdrIcon.png"
 codesign --force --sign - --entitlements Resources/Entitlements.plist "$app_path"
 print "Built $app_path"

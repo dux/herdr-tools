@@ -51,6 +51,7 @@ import PastirCore
     private var appEditor: AppEditorWindow?
     private var appManager: AppManagerWindow?
     private var barFraction = UserDefaults.standard.object(forKey: "barOriginFraction") as? Double
+    private var screenID = (UserDefaults.standard.object(forKey: "barScreenID") as? NSNumber)?.uint32Value
 
     init(launcher: AppLauncher, apps: AppStore) {
         self.launcher = launcher
@@ -58,7 +59,7 @@ import PastirCore
     }
 
     func show() {
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        guard let screen = currentScreen() else { return }
         let layout = layout(screen: screen, width: contentMetrics(screen: screen))
         let panel = NSPanel(contentRect: layout.bar,
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -84,10 +85,28 @@ import PastirCore
     }
 
     func updateScreen() {
-        guard let screen = panel?.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
+        guard let screen = currentScreen() else { return }
         let layout = layout(screen: screen, width: contentMetrics(screen: screen))
         content?.rootView = makeView()
         if peekTask == nil { panel?.setFrame(layout.bar, display: true) }
+    }
+
+    func switchDisplay() {
+        let screens = NSScreen.screens
+        guard screens.count > 1 else { return }
+        let current = currentScreen()
+        let index = screens.firstIndex { $0.displayID == current?.displayID } ?? 0
+        let next = screens[(index + 1) % screens.count]
+        screenID = next.displayID
+        if let screenID { UserDefaults.standard.set(Int(screenID), forKey: "barScreenID") }
+        updateScreen()
+    }
+
+    private func currentScreen() -> NSScreen? {
+        if let screenID, let match = NSScreen.screens.first(where: { $0.displayID == screenID }) {
+            return match
+        }
+        return panel?.screen ?? NSScreen.main ?? NSScreen.screens.first
     }
 
     func stop() {
@@ -99,6 +118,9 @@ import PastirCore
 
     private func launchCustom(_ app: CustomApp) {
         guard launcher.launching == nil else { return }
+        // Make the bar's display the active one so the app opens here.
+        NSApp.activate(ignoringOtherApps: true)
+        panel?.makeKeyAndOrderFront(nil)
         launchTask = Task { await launcher.open(app) }
     }
 
@@ -137,6 +159,7 @@ import PastirCore
                 copyFolder: { [weak self] in self?.copyFolder() },
                 addApp: { [weak self] in self?.addCustomApp() },
                 manageApps: { [weak self] in self?.showAppManager() },
+                switchDisplay: { [weak self] in self?.switchDisplay() },
                 editApp: { [weak self] app in self?.editCustomApp(app) },
                 removeApp: { [weak self] app in self?.apps.remove(app.id) },
                 launchCustom: { [weak self] app in self?.launchCustom(app) })
@@ -211,12 +234,15 @@ import PastirCore
     }
 
     private func saveBarFraction() {
-        guard let barFraction else { return }
-        UserDefaults.standard.set(barFraction, forKey: "barOriginFraction")
+        if let barFraction { UserDefaults.standard.set(barFraction, forKey: "barOriginFraction") }
+        if let screen = panel?.screen {
+            screenID = screen.displayID
+            if let screenID { UserDefaults.standard.set(Int(screenID), forKey: "barScreenID") }
+        }
     }
 
     private func contentMetrics(screen: NSScreen) -> CGFloat {
-        let controls = 98 + CGFloat(apps.apps.count) * 30
+        let controls = 92 + CGFloat(apps.apps.count) * 30
         return min(controls, min(800, topArea(screen: screen).width - 16))
     }
 
@@ -252,5 +278,11 @@ import PastirCore
                 }
             }
         }
+    }
+}
+
+extension NSScreen {
+    var displayID: CGDirectDisplayID? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 }

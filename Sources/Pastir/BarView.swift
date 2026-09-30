@@ -7,16 +7,25 @@ struct BarView: View {
     let copyFolder: () -> Void
     let addApp: () -> Void
     let manageApps: () -> Void
+    let switchDisplay: () -> Void
     let editApp: (CustomApp) -> Void
     let removeApp: (CustomApp) -> Void
     let launchCustom: (CustomApp) -> Void
 
+    private var navIcon: NSImage {
+        if let url = Bundle.main.url(forResource: "HerdrIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) { return image }
+        return NSApp.applicationIconImage
+    }
+
     var body: some View {
         HStack(spacing: 6) {
-            Image(nsImage: NSApp.applicationIconImage)
+            Image(nsImage: navIcon)
                 .resizable()
+                .interpolation(.high)
                 .frame(width: 18, height: 18)
-                .help("Pastir - drag to move")
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .help("Herdr - drag to move")
 
             Button(action: copyFolder) {
                 Image(systemName: launcher.copiedFolder ? "checkmark" : "doc.on.doc")
@@ -56,6 +65,7 @@ struct BarView: View {
             Menu {
                 Button("Add application", action: addApp)
                 Button("Edit applications", action: manageApps)
+                Button("Switch display", action: switchDisplay)
                 Divider()
                 Button("Quit Pastir") { NSApp.terminate(nil) }
             } label: { Image(systemName: "ellipsis").frame(width: 22, height: 22) }
