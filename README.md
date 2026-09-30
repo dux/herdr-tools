@@ -2,12 +2,12 @@
 
 ![Herdr Tools bar](docs/bar.png)
 
-A native Swift macOS bar that launches apps for the folder focused in Herdr.
-The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, starting at 65% of the screen width and clamped inside the menu-bar area.
-The leading icon is the Herdr logo; drag it left or right to move the bar, and the position is remembered.
-**Switch display** in the ellipsis menu moves the bar to the next display and remembers it.
-On displays with a camera notch it uses an unobscured area beside the notch.
-Apps are fully user-defined and saved in config; buttons use icons with names shown on hover.
+* Native Swift macOS bar that launches apps for the folder focused in Herdr.
+* Compact 28-point bar sized to its contents, floating at the top of the screen.
+* Drag the leading Herdr icon to reposition the bar; the position is remembered.
+* **Switch display** in the ellipsis menu moves the bar to the next display.
+* On notched displays it sits in the unobscured area beside the notch.
+* Apps are user-defined in config; hover a button to see its name.
 
 ## Build and run
 
