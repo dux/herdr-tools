@@ -14,6 +14,7 @@ task :install do
     sh 'touch /Applications/Pastir.app'
     sh '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Pastir.app'
     sh 'pkill -x Pastir || true'
+    sh 'while pgrep -x Pastir >/dev/null; do sleep 0.1; done'
     sh 'open /Applications/Pastir.app'
     say.green 'Installed and restarted /Applications/Pastir.app'
   end

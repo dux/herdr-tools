@@ -2,21 +2,36 @@ import AppKit
 import SwiftUI
 import PastirCore
 
-@MainActor enum AppEditorWindow {
-    static func present(existing: CustomApp?, onSave: @escaping (CustomApp) -> Void) {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 260),
-                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = existing == nil ? "Add App" : "Edit App"
-        let view = AppEditorView(existing: existing,
-                                 onSave: { app in onSave(app); NSApp.stopModal(withCode: .OK) },
-                                 cancel: { NSApp.stopModal(withCode: .cancel) })
-        let controller = NSHostingController(rootView: view)
-        window.contentViewController = controller
-        controller.view.layoutSubtreeIfNeeded()
-        window.setContentSize(controller.view.fittingSize)
-        window.center()
-        NSApp.activate()
-        NSApp.runModal(for: window)
-        window.orderOut(nil)
+@MainActor final class AppEditorWindow: NSObject, NSWindowDelegate {
+    private let panel: NSPanel
+    private let onClose: () -> Void
+
+    init(existing: CustomApp?, onSave: @escaping (CustomApp) -> Void, onClose: @escaping () -> Void) {
+        self.onClose = onClose
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 540, height: 300),
+                            styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        self.panel = panel
+        super.init()
+        panel.title = existing == nil ? "Add App" : "Edit App"
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.delegate = self
+        panel.contentViewController = NSHostingController(rootView: AppEditorView(
+            existing: existing,
+            onSave: { app in onSave(app); panel.close() },
+            cancel: { panel.close() }))
     }
+
+    func show() {
+        panel.center()
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    func close() { panel.close() }
+
+    func windowWillClose(_ notification: Notification) { onClose() }
 }

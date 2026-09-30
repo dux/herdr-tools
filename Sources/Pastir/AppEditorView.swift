@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 import PastirCore
 
 struct AppEditorView: View {
@@ -12,6 +11,7 @@ struct AppEditorView: View {
     @State private var command: String
     @State private var iconPath: String?
     @State private var icon: NSImage?
+    @State private var symbol: String
     private let isNew: Bool
 
     init(existing: CustomApp?, onSave: @escaping (CustomApp) -> Void, cancel: @escaping () -> Void) {
@@ -22,6 +22,7 @@ struct AppEditorView: View {
         _name = State(initialValue: existing?.name ?? "")
         _command = State(initialValue: existing?.command ?? "")
         _iconPath = State(initialValue: existing?.iconPath)
+        _symbol = State(initialValue: existing?.symbol ?? "")
     }
 
     var body: some View {
@@ -31,12 +32,10 @@ struct AppEditorView: View {
             HStack(alignment: .top, spacing: 14) {
                 preview
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 8) {
-                        Button("Choose App...", action: chooseApp)
-                        Button("Choose Icon...", action: chooseIcon)
-                    }
+                    appPicker
                     TextField("Name", text: $name)
                     TextField("Command", text: $command)
+                    TextField("Icon: SF Symbol name (optional)", text: $symbol)
                     Text("Use $FOLDER for the selected project folder.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -50,50 +49,59 @@ struct AppEditorView: View {
             }
         }
         .padding(20)
-        .frame(width: 520)
+        .frame(width: 540)
+    }
+
+    private var appPicker: some View {
+        Menu {
+            if InstalledApp.all.isEmpty {
+                Text("No applications found")
+            }
+            ForEach(InstalledApp.all) { app in
+                Button { apply(app) } label: {
+                    Label {
+                        Text(app.name)
+                    } icon: {
+                        Image(nsImage: app.icon)
+                    }
+                }
+            }
+        } label: {
+            Label("Choose App...", systemImage: "square.grid.2x2")
+        }
+        .fixedSize()
+        .disabled(InstalledApp.all.isEmpty)
     }
 
     private var preview: some View {
         Group {
             if let image = icon ?? iconPath.flatMap({ NSImage(contentsOfFile: $0) }) {
                 Image(nsImage: image).resizable().interpolation(.high).frame(width: 48, height: 48)
+            } else if let image = NSImage(systemSymbolName: trimmedSymbol, accessibilityDescription: nil) {
+                Image(nsImage: image).resizable().interpolation(.high).frame(width: 36, height: 36)
+                    .foregroundStyle(.secondary)
             } else {
                 Image(systemName: "app").font(.system(size: 26)).foregroundStyle(.secondary)
-                    .frame(width: 48, height: 48)
             }
         }
+        .frame(width: 48, height: 48)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 9))
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var trimmedCommand: String { command.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedSymbol: String { symbol.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    private func chooseApp() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose App"
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.applicationBundle]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        name = url.deletingPathExtension().lastPathComponent
-        icon = NSWorkspace.shared.icon(forFile: url.path)
-        command = "open -a " + LaunchText.shellQuote(url.path) + " \"$FOLDER\""
-    }
-
-    private func chooseIcon() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose Icon"
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image]
-        guard panel.runModal() == .OK, let url = panel.url, let image = NSImage(contentsOf: url) else { return }
-        icon = image
+    private func apply(_ app: InstalledApp) {
+        name = app.name
+        command = "open -a " + LaunchText.shellQuote(app.url.path) + " \"$FOLDER\""
+        icon = app.icon
+        symbol = ""
     }
 
     private func save() {
-        var app = CustomApp(id: id, name: trimmedName, command: trimmedCommand, iconPath: iconPath)
+        var app = CustomApp(id: id, name: trimmedName, command: trimmedCommand,
+                            iconPath: iconPath, symbol: trimmedSymbol.isEmpty ? nil : trimmedSymbol)
         if let icon, let path = AppIconStore.write(icon, id: id) {
             app.iconPath = path
         }

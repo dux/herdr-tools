@@ -21,6 +21,7 @@ import PastirCore
     private var launchTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
     private var rightClickMonitor: Any?
+    private var appEditor: AppEditorWindow?
     private var projectStripWidth: CGFloat = 0
 
     init(projects: ProjectStore, launcher: AppLauncher, apps: AppStore) {
@@ -93,12 +94,20 @@ import PastirCore
         launchTask = Task { await launcher.openCustom(app, project: project) }
     }
 
-    private func addCustomApp() {
-        AppEditorWindow.present(existing: nil) { [weak self] app in self?.apps.add(app) }
-    }
+    func addCustomApp() { presentAppEditor(existing: nil) }
 
-    private func editCustomApp(_ app: CustomApp) {
-        AppEditorWindow.present(existing: app) { [weak self] updated in self?.apps.update(updated) }
+    private func editCustomApp(_ app: CustomApp) { presentAppEditor(existing: app) }
+
+    private func presentAppEditor(existing: CustomApp?) {
+        appEditor?.close()
+        appEditor = AppEditorWindow(
+            existing: existing,
+            onSave: { [weak self] app in
+                guard let self else { return }
+                if existing == nil { self.apps.add(app) } else { self.apps.update(app) }
+            },
+            onClose: { [weak self] in self?.appEditor = nil })
+        appEditor?.show()
     }
 
     private func makeView(projectWidth: CGFloat) -> BarView {

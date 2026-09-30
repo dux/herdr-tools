@@ -34,6 +34,7 @@ import AppKit
         item.button?.toolTip = "Pastir"
         let menu = NSMenu()
         menu.addItem(withTitle: "Add project folder...", action: #selector(addProject), keyEquivalent: "")
+        menu.addItem(withTitle: "Add app...", action: #selector(addApp), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Pastir", action: #selector(quit), keyEquivalent: "q")
         for menuItem in menu.items { menuItem.target = self }
@@ -58,6 +59,7 @@ import AppKit
     }
 
     @objc private func addProject() { bar.addFolder() }
+    @objc private func addApp() { bar.addCustomApp() }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc private func screenChanged() { bar.updateScreen() }
 }

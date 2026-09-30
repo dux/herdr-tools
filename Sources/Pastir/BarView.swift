@@ -81,7 +81,7 @@ struct BarView: View {
                         } else if let path = app.iconPath, let image = NSImage(contentsOfFile: path) {
                             Image(nsImage: image).resizable().interpolation(.high).frame(width: 16, height: 16)
                         } else {
-                            Image(systemName: "app")
+                            Image(systemName: app.symbol.flatMap { $0.isEmpty ? nil : $0 } ?? "app")
                         }
                     }
                     .font(.system(size: 12, weight: .medium))
