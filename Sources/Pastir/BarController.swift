@@ -5,10 +5,38 @@ import PastirCore
 
 @MainActor final class BarHostingView: NSHostingView<BarView> {
     var onRightClick: ((NSEvent) -> Bool)?
+    var onIconDrag: ((CGFloat) -> Void)?
+    var onIconDragEnd: (() -> Void)?
+    private var draggingIcon = false
+    private let iconHandleWidth: CGFloat = 32
 
     override func rightMouseDown(with event: NSEvent) {
         if onRightClick?(event) == true { return }
         super.rightMouseDown(with: event)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        if convert(event.locationInWindow, from: nil).x < iconHandleWidth {
+            draggingIcon = true
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        if draggingIcon { onIconDrag?(event.deltaX); return }
+        super.mouseDragged(with: event)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if draggingIcon {
+            draggingIcon = false
+            onIconDragEnd?()
+            return
+        }
+        super.mouseUp(with: event)
     }
 }
 
@@ -22,6 +50,7 @@ import PastirCore
     private var rightClickMonitor: Any?
     private var appEditor: AppEditorWindow?
     private var appManager: AppManagerWindow?
+    private var barFraction = UserDefaults.standard.object(forKey: "barOriginFraction") as? Double
 
     init(launcher: AppLauncher, apps: AppStore) {
         self.launcher = launcher
@@ -43,6 +72,8 @@ import PastirCore
         let content = BarHostingView(rootView: makeView())
         content.sizingOptions = []
         content.onRightClick = { [weak self] event in self?.handleRightClick(event) ?? false }
+        content.onIconDrag = { [weak self] delta in self?.dragIcon(by: delta) }
+        content.onIconDragEnd = { [weak self] in self?.saveBarFraction() }
         panel.contentView = content
         self.content = content
         self.panel = panel
@@ -165,7 +196,23 @@ import PastirCore
     }
 
     private func layout(screen: NSScreen, width: CGFloat) -> BarLayout {
-        BarLayout(screenFrame: screen.frame, contentWidth: width, topArea: topArea(screen: screen))
+        let originX = barFraction.map { CGFloat($0) * screen.frame.width + screen.frame.minX }
+        return BarLayout(screenFrame: screen.frame, contentWidth: width,
+                         topArea: topArea(screen: screen), originX: originX)
+    }
+
+    private func dragIcon(by delta: CGFloat) {
+        guard let panel, let screen = panel.screen ?? NSScreen.main else { return }
+        let area = topArea(screen: screen)
+        let maxX = max(area.minX, area.maxX - panel.frame.width)
+        let x = min(max(panel.frame.origin.x + delta, area.minX), maxX)
+        panel.setFrameOrigin(NSPoint(x: x, y: panel.frame.origin.y))
+        barFraction = Double((x - screen.frame.minX) / screen.frame.width)
+    }
+
+    private func saveBarFraction() {
+        guard let barFraction else { return }
+        UserDefaults.standard.set(barFraction, forKey: "barOriginFraction")
     }
 
     private func contentMetrics(screen: NSScreen) -> CGFloat {

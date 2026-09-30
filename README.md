@@ -1,7 +1,8 @@
 # Pastir
 
 A native Swift macOS bar that launches apps for the folder focused in Herdr.
-The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, with its leading edge at 65% of the screen width, clamped inside the menu-bar area.
+The compact 28-point bar sizes itself to its contents and floats at the very top of the screen, starting at 65% of the screen width and clamped inside the menu-bar area.
+Drag the Pastir icon left or right to move the bar; the position is remembered.
 On displays with a camera notch it uses an unobscured area beside the notch.
 Apps are fully user-defined and saved in config; buttons use icons with names shown on hover.
 

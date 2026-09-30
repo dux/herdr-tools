@@ -26,6 +26,16 @@ import Testing
     #expect(layout.bar.minX == 640)
 }
 
+@Test func explicitOriginOverridesDefaultAnchor() {
+    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900), contentWidth: 300, originX: 100)
+    #expect(layout.bar.minX == 100)
+}
+
+@Test func explicitOriginIsClampedToTopArea() {
+    let layout = BarLayout(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900), contentWidth: 300, originX: 2000)
+    #expect(layout.bar.minX == 1140)
+}
+
 @Test func shellArgumentsPreserveMetacharacters() {
     #expect(LaunchText.shellQuote("/a/b's $(touch nope)`hello`") == "'/a/b'\\''s $(touch nope)`hello`'")
 }

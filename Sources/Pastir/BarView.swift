@@ -16,7 +16,7 @@ struct BarView: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 18, height: 18)
-                .help("Pastir")
+                .help("Pastir - drag to move")
 
             Button(action: copyFolder) {
                 Image(systemName: launcher.copiedFolder ? "checkmark" : "doc.on.doc")
