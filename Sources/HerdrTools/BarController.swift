@@ -7,10 +7,35 @@ import HerdrToolsCore
     var onRightClick: ((NSEvent) -> Bool)?
     var onIconDrag: ((CGFloat) -> Void)?
     var onIconDragEnd: (() -> Void)?
+    /// Mouse x in view coordinates, nil when the mouse leaves or clicks.
+    var onHover: ((CGFloat?) -> Void)?
     private var draggingIcon = false
+    private var hoverArea: NSTrackingArea?
     private let iconHandleWidth: CGFloat = 32
 
+    // .activeAlways because the bar is non-activating, so the app is usually inactive.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                  owner: self)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        onHover?(convert(event.locationInWindow, from: nil).x)
+        super.mouseMoved(with: event)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        if event.trackingArea === hoverArea { onHover?(nil) }
+        super.mouseExited(with: event)
+    }
+
     override func rightMouseDown(with event: NSEvent) {
+        onHover?(nil)
         if onRightClick?(event) == true { return }
         super.rightMouseDown(with: event)
     }
@@ -18,6 +43,7 @@ import HerdrToolsCore
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
+        onHover?(nil)
         if convert(event.locationInWindow, from: nil).x < iconHandleWidth {
             draggingIcon = true
             return
@@ -43,19 +69,26 @@ import HerdrToolsCore
 @MainActor final class BarController {
     private let launcher: AppLauncher
     private let apps: AppStore
+    private let focus: FocusWatcher
     private var panel: NSPanel?
     private var content: BarHostingView?
     private var launchTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
+    private var focusHideTask: Task<Void, Never>?
+    private var tooltipTask: Task<Void, Never>?
+    private var pendingTooltip: ClosedRange<CGFloat>?
+    private let tooltip = BarTooltip()
     private var rightClickMonitor: Any?
     private var appEditor: AppEditorWindow?
     private var appManager: AppManagerWindow?
+    private var focusWindow: FocusAppWindow?
     private var barFraction = UserDefaults.standard.object(forKey: "barOriginFraction") as? Double
     private var screenID = (UserDefaults.standard.object(forKey: "barScreenID") as? NSNumber)?.uint32Value
 
-    init(launcher: AppLauncher, apps: AppStore) {
+    init(launcher: AppLauncher, apps: AppStore, focus: FocusWatcher) {
         self.launcher = launcher
         self.apps = apps
+        self.focus = focus
     }
 
     func show() {
@@ -75,6 +108,7 @@ import HerdrToolsCore
         content.onRightClick = { [weak self] event in self?.handleRightClick(event) ?? false }
         content.onIconDrag = { [weak self] delta in self?.dragIcon(by: delta) }
         content.onIconDragEnd = { [weak self] in self?.saveBarFraction() }
+        content.onHover = { [weak self] x in self?.hover(x) }
         panel.contentView = content
         self.content = content
         self.panel = panel
@@ -82,6 +116,8 @@ import HerdrToolsCore
         installRightClickMonitor()
         observeMessages()
         observeLayout()
+        focus.onChange = { [weak self] in self?.applyFocus() }
+        applyFocus()
     }
 
     func updateScreen() {
@@ -112,6 +148,8 @@ import HerdrToolsCore
     func stop() {
         launchTask?.cancel()
         peekTask?.cancel()
+        focusHideTask?.cancel()
+        hideTooltip()
         if let rightClickMonitor { NSEvent.removeMonitor(rightClickMonitor) }
         rightClickMonitor = nil
     }
@@ -142,6 +180,41 @@ import HerdrToolsCore
         appManager?.show()
     }
 
+    private func chooseFocusApp() {
+        focusWindow?.close()
+        focusWindow = FocusAppWindow(focus: focus, onClose: { [weak self] in self?.focusWindow = nil })
+        focusWindow?.show()
+    }
+
+    private func applyFocus() {
+        guard let panel else { return }
+        if focus.shouldShow {
+            focusHideTask?.cancel()
+            focusHideTask = nil
+            // Zero-duration group replaces an in-flight fade-out instead of racing it.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                panel.animator().alphaValue = 1
+            }
+            panel.orderFrontRegardless()
+        } else if focusHideTask == nil {
+            focusHideTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, !Task.isCancelled, let panel = self.panel else { return }
+                self.hideTooltip()
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    panel.animator().alphaValue = 0
+                } completionHandler: { [weak self] in
+                    MainActor.assumeIsolated {
+                        guard let self, !self.focus.shouldShow else { return }
+                        self.panel?.orderOut(nil)
+                    }
+                }
+            }
+        }
+    }
+
     private func presentAppEditor(existing: CustomApp?) {
         appEditor?.close()
         appEditor = AppEditorWindow(
@@ -155,11 +228,12 @@ import HerdrToolsCore
     }
 
     private func makeView() -> BarView {
-        BarView(launcher: launcher, apps: apps,
+        BarView(launcher: launcher, apps: apps, focus: focus,
                 copyFolder: { [weak self] in self?.copyFolder() },
                 addApp: { [weak self] in self?.addCustomApp() },
                 manageApps: { [weak self] in self?.showAppManager() },
                 switchDisplay: { [weak self] in self?.switchDisplay() },
+                chooseFocusApp: { [weak self] in self?.chooseFocusApp() },
                 editApp: { [weak self] app in self?.editCustomApp(app) },
                 removeApp: { [weak self] app in self?.apps.remove(app.id) },
                 launchCustom: { [weak self] app in self?.launchCustom(app) })
@@ -180,15 +254,63 @@ import HerdrToolsCore
         return true
     }
 
+    // Mirrors BarView's HStack: 8 pt padding, 18 pt Herdr icon, 24 pt buttons, 6 pt spacing.
+    private static let herdrIcon: ClosedRange<CGFloat> = 8...26
+    private static let copyButton: ClosedRange<CGFloat> = 32...56
+    private static let appsStart: CGFloat = 62
+    private static let buttonWidth: CGFloat = 24
+    private static let spacing: CGFloat = 6
+
     private func customAppsRange() -> ClosedRange<CGFloat>? {
         let count = apps.apps.count
         guard count > 0 else { return nil }
-        let start: CGFloat = 8 + 18 + 6 + 24 + 6
-        return start...(start + CGFloat(count) * 24 + CGFloat(count - 1) * 6)
+        let start = Self.appsStart
+        return start...(start + CGFloat(count) * Self.buttonWidth + CGFloat(count - 1) * Self.spacing)
+    }
+
+    /// Hit ranges extend half the spacing to each side so sliding across icons never hits a gap.
+    private func tooltipItem(at x: CGFloat) -> (text: String, range: ClosedRange<CGFloat>)? {
+        let pad = Self.spacing / 2
+        if x < Self.herdrIcon.upperBound + pad { return ("Drag to move", Self.herdrIcon) }
+        if x < Self.copyButton.upperBound + pad { return ("Copy focused folder path", Self.copyButton) }
+        let step = Self.buttonWidth + Self.spacing
+        let index = Int(((x - Self.appsStart + pad) / step).rounded(.down))
+        guard apps.apps.indices.contains(index) else { return nil }
+        let minX = Self.appsStart + CGFloat(index) * step
+        return (apps.apps[index].name, minX...(minX + Self.buttonWidth))
+    }
+
+    private func hover(_ x: CGFloat?) {
+        guard let x, peekTask == nil, let item = tooltipItem(at: x) else { hideTooltip(); return }
+        if tooltip.isVisible { showTooltip(item); return }
+        // Keep the pending timer while the mouse stays on the same icon.
+        guard item.range != pendingTooltip else { return }
+        tooltipTask?.cancel()
+        pendingTooltip = item.range
+        tooltipTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard let self, !Task.isCancelled else { return }
+            self.pendingTooltip = nil
+            self.showTooltip(item)
+        }
+    }
+
+    private func showTooltip(_ item: (text: String, range: ClosedRange<CGFloat>)) {
+        guard let panel, let screen = panel.screen else { return }
+        let anchor = CGRect(x: panel.frame.minX + item.range.lowerBound, y: panel.frame.minY,
+                            width: item.range.upperBound - item.range.lowerBound, height: 0)
+        tooltip.show(item.text, below: anchor, on: screen)
+    }
+
+    private func hideTooltip() {
+        tooltipTask?.cancel()
+        pendingTooltip = nil
+        tooltip.hide()
     }
 
     private func peek() {
         guard peekTask == nil, let panel else { return }
+        hideTooltip()
         let screen = panel.screen ?? NSScreen.main ?? NSScreen.screens.first
         guard let screen else { return }
         var hidden = layout(screen: screen, width: panel.frame.width).bar

@@ -2,6 +2,7 @@ import AppKit
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     private let apps: AppStore
+    private let focus = FocusWatcher()
     private let bar: BarController
 
     override init() {
@@ -10,7 +11,7 @@ import AppKit
         let apps = AppStore(file: CustomAppFile(url: directory.appendingPathComponent("apps.json")))
         let launcher = AppLauncher()
         self.apps = apps
-        self.bar = BarController(launcher: launcher, apps: apps)
+        self.bar = BarController(launcher: launcher, apps: apps, focus: focus)
         super.init()
     }
 
@@ -20,6 +21,7 @@ import AppKit
            let icon = NSImage(contentsOf: iconURL) {
             NSApp.applicationIconImage = icon
         }
+        focus.start()
         bar.show()
         NotificationCenter.default.addObserver(self, selector: #selector(screenChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)

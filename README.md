@@ -6,6 +6,7 @@
 * Compact 28-point bar sized to its contents, floating at the top of the screen.
 * Drag the leading Herdr icon to reposition the bar; the position is remembered.
 * **Switch display** in the ellipsis menu moves the bar to the next display.
+* **Show only when app is in focus...** in the ellipsis menu picks an app (e.g. WezTerm); the bar fades out 2 seconds after that app loses focus and shows again as soon as it is back in front.
 * On notched displays it sits in the unobscured area beside the notch.
 * Apps are user-defined in config; hover a button to see its name.
 

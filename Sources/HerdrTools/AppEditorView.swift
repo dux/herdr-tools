@@ -11,6 +11,7 @@ struct AppEditorView: View {
     @State private var command: String
     @State private var symbol: String
     @State private var showingSymbols = false
+    @State private var showingApps = false
     private let isNew: Bool
 
     init(existing: CustomApp?, onSave: @escaping (CustomApp) -> Void, cancel: @escaping () -> Void) {
@@ -57,21 +58,14 @@ struct AppEditorView: View {
     }
 
     private var appPicker: some View {
-        Menu {
-            if InstalledApp.all.isEmpty {
-                Text("No applications found")
-            }
-            ForEach(InstalledApp.all) { app in
-                Button { apply(app) } label: {
-                    Label {
-                        Text(app.name)
-                    } icon: {
-                        Image(nsImage: app.icon)
-                    }
-                }
-            }
-        } label: {
+        Button { showingApps = true } label: {
             Label("Choose App...", systemImage: "square.grid.2x2")
+        }
+        .popover(isPresented: $showingApps, arrowEdge: .bottom) {
+            InstalledAppPicker { app in
+                apply(app)
+                showingApps = false
+            }
         }
         .fixedSize()
         .disabled(InstalledApp.all.isEmpty)
