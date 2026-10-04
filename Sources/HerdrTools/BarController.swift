@@ -199,7 +199,7 @@ import HerdrToolsCore
             panel.orderFrontRegardless()
         } else if focusHideTask == nil {
             focusHideTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .seconds(0.5))
                 guard let self, !Task.isCancelled, let panel = self.panel else { return }
                 self.hideTooltip()
                 NSAnimationContext.runAnimationGroup { context in
