@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Print the app version from .version (YAML `version: X.Y.Z`, written by
-# `hammer version` via vstamp). Missing or unstamped prints dev.
+# `hammer deploy` via vstamp count --release). Missing or unstamped prints dev.
 #
 #   tools/version.sh          print v1.2.3
 #   tools/version.sh --short  print 1.2.3

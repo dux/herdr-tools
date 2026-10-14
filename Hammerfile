@@ -31,17 +31,16 @@ task :test do
 end
 
 task :version do
-  desc 'Stamp .version with the commit count on main (vstamp count), then print it'
-  proc do
-    sh 'vstamp count'
-    say `zsh tools/version.sh`.strip
-  end
+  desc 'Print the version from .version'
+  proc { say `zsh tools/version.sh`.strip }
 end
 
 task :deploy do
-  desc 'Push, then publish a universal macOS release, keeping only the latest'
+  desc 'Stamp + tag + push the version (vstamp count --release), then publish a universal macOS release, keeping only the latest'
   proc do
     asset = 'Herdr_Tools.zip'
+
+    sh 'vstamp count --release'
 
     ENV['UNIVERSAL'] = '1'
     sh 'zsh build.sh'
@@ -58,14 +57,17 @@ task :deploy do
     error 'shasum failed' unless digest
     File.write("build/#{asset}.sha256", "#{digest}  #{asset}\n")
 
-    sh 'git push origin HEAD'
-
+    # vstamp pushed the tag; a rerun recreates its release without deleting the tag
     `gh release list --limit 100 --json tagName --jq '.[].tagName'`.split.each do |old|
-      sh "gh release delete #{old} --yes --cleanup-tag"
-      `git tag -d #{old} 2>/dev/null`
+      if old == tag
+        sh "gh release delete #{old} --yes"
+      else
+        sh "gh release delete #{old} --yes --cleanup-tag"
+        `git tag -d #{old} 2>/dev/null`
+      end
     end
 
-    sh "gh release create #{tag} #{zip} build/#{asset}.sha256 " \
+    sh "gh release create #{tag} #{zip} build/#{asset}.sha256 --verify-tag " \
        "--title 'Herdr Tools #{version}' --generate-notes --latest"
     say.green "Released #{tag}"
   end

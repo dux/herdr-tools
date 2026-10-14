@@ -2,9 +2,6 @@
 set -euo pipefail
 cd "${0:A:h}"
 
-# Stamp .version from the commit count before reading it below.
-hammer version >/dev/null
-
 # UNIVERSAL=1 builds a single arm64 + x86_64 binary for distribution.
 if [[ "${UNIVERSAL:-0}" == "1" ]]; then
   swift build -c release --arch arm64 --arch x86_64
