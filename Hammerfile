@@ -31,12 +31,9 @@ task :test do
 end
 
 task :version do
-  desc 'Stamp .version with the commit count on main, then print it'
+  desc 'Stamp .version with the commit count on main (vstamp count), then print it'
   proc do
-    ref = system('git rev-parse --verify -q main >/dev/null 2>&1') ? 'main' : 'HEAD'
-    count = `git rev-list --count #{ref}`.strip
-    error 'could not count commits' unless count.match?(/\A\d+\z/)
-    File.write('.version', "v#{count}\n")
+    sh 'vstamp count'
     say `zsh tools/version.sh`.strip
   end
 end
