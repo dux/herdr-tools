@@ -68,6 +68,12 @@ import Testing
     #expect(HerdrPanes.focusedFolder(json: "not json") == nil)
 }
 
+@Test func loginShellPathIgnoresRcOutput() {
+    #expect(ShellPath.fromLoginShell("rc banner\n__HT__/usr/bin:/bin") == "/usr/bin:/bin")
+    #expect(ShellPath.fromLoginShell("__HT__") == nil)
+    #expect(ShellPath.fromLoginShell("command not found") == nil)
+}
+
 @Test func customAppSurvivesPersistence() throws {
     let app = CustomApp(name: "Fork", command: "open -a '/Applications/Fork.app' \"$FOLDER\"",
                         symbol: "arrow.triangle.branch")
