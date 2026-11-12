@@ -6,7 +6,7 @@ import HerdrToolsCore
 /// Keeps the Mac awake until the chosen time runs out.
 /// The power assertion is released by macOS when the process exits.
 @MainActor @Observable final class SleepBlocker {
-    static let hourChoices = [1, 2, 3, 4, 8, 16]
+    static let hourChoices = [1, 2, 3, 4, 8, 16, 24]
     private static let displayKey = "keepDisplayAwake"
 
     /// Countdown text such as "2h 12m"; nil while the Mac may sleep.

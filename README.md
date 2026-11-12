@@ -37,7 +37,7 @@ The build generates standard and Retina icon sizes and packages them as `HerdrTo
 It is derived from `Resources/HerdrIcon.png` by `tools/make_icon.py`.
 
 The first button is built in and copies the Herdr focused folder path to the clipboard.
-The moon button next to it keeps the Mac awake for 1, 2, 3, 4, 8 or 16 hours; while active it shows the time left, such as `2h 12m`, and **Off** ends it early.
+The moon button next to it keeps the Mac awake for 1, 2, 3, 4, 8 or 16 hours or 1 day; while active it shows the time left, such as `2h 12m`, and **Off** ends it early.
 Its **Keep display awake** toggle also keeps the screen on (on by default, remembered between launches); when off, only the system stays awake.
 The timer ends when Herdr Tools quits.
 A divider separates these built-in buttons from your apps.
