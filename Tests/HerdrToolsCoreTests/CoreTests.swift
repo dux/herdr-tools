@@ -74,6 +74,14 @@ import Testing
     #expect(ShellPath.fromLoginShell("command not found") == nil)
 }
 
+@Test func awakeTextCountsDownInHoursAndMinutes() {
+    #expect(AwakeText.remaining(7920) == "2h 12m")
+    #expect(AwakeText.remaining(3600) == "1h 0m")
+    #expect(AwakeText.remaining(2700) == "45m")
+    #expect(AwakeText.remaining(7199.5) == "2h 0m")
+    #expect(AwakeText.remaining(30) == "1m")
+}
+
 @Test func customAppSurvivesPersistence() throws {
     let app = CustomApp(name: "Fork", command: "open -a '/Applications/Fork.app' \"$FOLDER\"",
                         symbol: "arrow.triangle.branch")

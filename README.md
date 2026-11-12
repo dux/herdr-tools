@@ -37,6 +37,10 @@ The build generates standard and Retina icon sizes and packages them as `HerdrTo
 It is derived from `Resources/HerdrIcon.png` by `tools/make_icon.py`.
 
 The first button is built in and copies the Herdr focused folder path to the clipboard.
+The moon button next to it keeps the Mac awake for 1, 2, 3, 4, 8 or 16 hours; while active it shows the time left, such as `2h 12m`, and **Off** ends it early.
+Its **Keep display awake** toggle also keeps the screen on (on by default, remembered between launches); when off, only the system stays awake.
+The timer ends when Herdr Tools quits.
+A divider separates these built-in buttons from your apps.
 Click an app button to run it for the folder focused in Herdr.
 Herdr Tools activates itself first so the app opens on the display where the bar is.
 The folder is read fresh on every click from `herdr pane list` (the focused pane's `foreground_cwd`, falling back to `cwd`), and is passed to the command in `FOLDER`, so `$FOLDER` expands to it.
@@ -66,4 +70,4 @@ hammer build
 codesign --verify --strict build/Herdr_Tools.app
 ```
 
-The automated tests cover bar layout, notch-aware placement, safe command quoting, and Herdr focused-folder parsing.
+The automated tests cover bar layout, notch-aware placement, safe command quoting, Herdr focused-folder parsing, and the keep-awake countdown text.

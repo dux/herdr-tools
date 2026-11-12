@@ -70,13 +70,16 @@ import HerdrToolsCore
     private let launcher: AppLauncher
     private let apps: AppStore
     private let focus: FocusWatcher
+    private let sleep: SleepBlocker
+    private var hits: [BarHit] = []
+    private var naturalWidth: CGFloat = 0
     private var panel: NSPanel?
     private var content: BarHostingView?
     private var launchTask: Task<Void, Never>?
     private var peekTask: Task<Void, Never>?
     private var focusHideTask: Task<Void, Never>?
     private var tooltipTask: Task<Void, Never>?
-    private var pendingTooltip: ClosedRange<CGFloat>?
+    private var pendingTooltip: BarHit?
     private let tooltip = BarTooltip()
     private var rightClickMonitor: Any?
     private var appEditor: AppEditorWindow?
@@ -85,15 +88,16 @@ import HerdrToolsCore
     private var barFraction = UserDefaults.standard.object(forKey: "barOriginFraction") as? Double
     private var screenID = (UserDefaults.standard.object(forKey: "barScreenID") as? NSNumber)?.uint32Value
 
-    init(launcher: AppLauncher, apps: AppStore, focus: FocusWatcher) {
+    init(launcher: AppLauncher, apps: AppStore, focus: FocusWatcher, sleep: SleepBlocker) {
         self.launcher = launcher
         self.apps = apps
         self.focus = focus
+        self.sleep = sleep
     }
 
     func show() {
         guard let screen = currentScreen() else { return }
-        let layout = layout(screen: screen, width: contentMetrics(screen: screen))
+        let layout = layout(screen: screen, width: contentWidth(screen: screen))
         let panel = NSPanel(contentRect: layout.bar,
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
@@ -115,16 +119,24 @@ import HerdrToolsCore
         panel.orderFrontRegardless()
         installRightClickMonitor()
         observeMessages()
-        observeLayout()
         focus.onChange = { [weak self] in self?.applyFocus() }
         applyFocus()
     }
 
     func updateScreen() {
         guard let screen = currentScreen() else { return }
-        let layout = layout(screen: screen, width: contentMetrics(screen: screen))
         content?.rootView = makeView()
-        if peekTask == nil { panel?.setFrame(layout.bar, display: true) }
+        applyFrame(screen: screen)
+    }
+
+    private func applyFrame(screen: NSScreen) {
+        guard peekTask == nil else { return }
+        panel?.setFrame(layout(screen: screen, width: contentWidth(screen: screen)).bar, display: true)
+    }
+
+    private func resize(to width: CGFloat) {
+        naturalWidth = width
+        if let screen = currentScreen() { applyFrame(screen: screen) }
     }
 
     func switchDisplay() {
@@ -228,7 +240,7 @@ import HerdrToolsCore
     }
 
     private func makeView() -> BarView {
-        BarView(launcher: launcher, apps: apps, focus: focus,
+        BarView(launcher: launcher, apps: apps, focus: focus, sleep: sleep,
                 copyFolder: { [weak self] in self?.copyFolder() },
                 addApp: { [weak self] in self?.addCustomApp() },
                 manageApps: { [weak self] in self?.showAppManager() },
@@ -236,7 +248,9 @@ import HerdrToolsCore
                 chooseFocusApp: { [weak self] in self?.chooseFocusApp() },
                 editApp: { [weak self] app in self?.editCustomApp(app) },
                 removeApp: { [weak self] app in self?.apps.remove(app.id) },
-                launchCustom: { [weak self] app in self?.launchCustom(app) })
+                launchCustom: { [weak self] app in self?.launchCustom(app) },
+                reportHits: { [weak self] hits in self?.hits = hits },
+                reportWidth: { [weak self] width in self?.resize(to: width) })
     }
 
     private func installRightClickMonitor() {
@@ -249,44 +263,25 @@ import HerdrToolsCore
     private func handleRightClick(_ event: NSEvent) -> Bool {
         guard let content, event.window === panel else { return false }
         let x = content.convert(event.locationInWindow, from: nil).x
-        if let customApps = customAppsRange(), customApps.contains(x) { return false }
+        // Items with their own context menu (custom apps) handle the click themselves.
+        if hits.contains(where: { $0.hasContextMenu && $0.range.contains(x) }) { return false }
         peek()
         return true
     }
 
-    // Mirrors BarView's HStack: 8 pt padding, 18 pt Herdr icon, 24 pt buttons, 6 pt spacing.
-    private static let herdrIcon: ClosedRange<CGFloat> = 8...26
-    private static let copyButton: ClosedRange<CGFloat> = 32...56
-    private static let appsStart: CGFloat = 62
-    private static let buttonWidth: CGFloat = 24
-    private static let spacing: CGFloat = 6
-
-    private func customAppsRange() -> ClosedRange<CGFloat>? {
-        let count = apps.apps.count
-        guard count > 0 else { return nil }
-        let start = Self.appsStart
-        return start...(start + CGFloat(count) * Self.buttonWidth + CGFloat(count - 1) * Self.spacing)
-    }
-
     /// Hit ranges extend half the spacing to each side so sliding across icons never hits a gap.
-    private func tooltipItem(at x: CGFloat) -> (text: String, range: ClosedRange<CGFloat>)? {
-        let pad = Self.spacing / 2
-        if x < Self.herdrIcon.upperBound + pad { return ("Drag to move", Self.herdrIcon) }
-        if x < Self.copyButton.upperBound + pad { return ("Copy focused folder path", Self.copyButton) }
-        let step = Self.buttonWidth + Self.spacing
-        let index = Int(((x - Self.appsStart + pad) / step).rounded(.down))
-        guard apps.apps.indices.contains(index) else { return nil }
-        let minX = Self.appsStart + CGFloat(index) * step
-        return (apps.apps[index].name, minX...(minX + Self.buttonWidth))
+    private func tooltipItem(at x: CGFloat) -> BarHit? {
+        let pad = BarView.spacing / 2
+        return hits.first { ($0.range.lowerBound - pad)...($0.range.upperBound + pad) ~= x }
     }
 
     private func hover(_ x: CGFloat?) {
         guard let x, peekTask == nil, let item = tooltipItem(at: x) else { hideTooltip(); return }
         if tooltip.isVisible { showTooltip(item); return }
         // Keep the pending timer while the mouse stays on the same icon.
-        guard item.range != pendingTooltip else { return }
+        guard item != pendingTooltip else { return }
         tooltipTask?.cancel()
-        pendingTooltip = item.range
+        pendingTooltip = item
         tooltipTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard let self, !Task.isCancelled else { return }
@@ -295,7 +290,7 @@ import HerdrToolsCore
         }
     }
 
-    private func showTooltip(_ item: (text: String, range: ClosedRange<CGFloat>)) {
+    private func showTooltip(_ item: BarHit) {
         guard let panel, let screen = panel.screen else { return }
         let anchor = CGRect(x: panel.frame.minX + item.range.lowerBound, y: panel.frame.minY,
                             width: item.range.upperBound - item.range.lowerBound, height: 0)
@@ -320,7 +315,8 @@ import HerdrToolsCore
             defer { self?.peekTask = nil }
             try? await Task.sleep(for: .seconds(5))
             guard let self, !Task.isCancelled, let panel = self.panel else { return }
-            let restored = self.layout(screen: panel.screen ?? screen, width: panel.frame.width).bar
+            let target = panel.screen ?? screen
+            let restored = self.layout(screen: target, width: self.contentWidth(screen: target)).bar
             self.animate(panel, to: restored, alpha: 1)
         }
     }
@@ -363,33 +359,22 @@ import HerdrToolsCore
         }
     }
 
-    private func contentMetrics(screen: NSScreen) -> CGFloat {
-        let controls = 92 + CGFloat(apps.apps.count) * 30
-        return min(controls, min(800, topArea(screen: screen).width - 16))
-    }
-
-    private func observeLayout() {
-        withObservationTracking {
-            _ = apps.apps
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.updateScreen()
-                self.observeLayout()
-            }
-        }
+    private func contentWidth(screen: NSScreen) -> CGFloat {
+        min(naturalWidth, min(800, topArea(screen: screen).width - 16))
     }
 
     private func observeMessages() {
         withObservationTracking {
             _ = launcher.message
             _ = apps.message
+            _ = sleep.message
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let message = self.launcher.message ?? self.apps.message
+                let message = self.launcher.message ?? self.apps.message ?? self.sleep.message
                 self.launcher.message = nil
                 self.apps.message = nil
+                self.sleep.message = nil
                 self.observeMessages()
                 if let message {
                     let alert = NSAlert()

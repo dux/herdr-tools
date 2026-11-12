@@ -11,7 +11,7 @@ import AppKit
         let apps = AppStore(file: CustomAppFile(url: directory.appendingPathComponent("apps.json")))
         let launcher = AppLauncher()
         self.apps = apps
-        self.bar = BarController(launcher: launcher, apps: apps, focus: focus)
+        self.bar = BarController(launcher: launcher, apps: apps, focus: focus, sleep: SleepBlocker())
         super.init()
     }
 
