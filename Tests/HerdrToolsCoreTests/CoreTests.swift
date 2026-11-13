@@ -82,6 +82,12 @@ import Testing
     #expect(AwakeText.remaining(30) == "1m")
 }
 
+@Test func awakeTextLabelsMenuChoices() {
+    #expect(AwakeText.choice(minutes: 30) == "30m")
+    #expect(AwakeText.choice(minutes: 120) == "2h")
+    #expect(AwakeText.choice(minutes: 1440) == "1 day")
+}
+
 @Test func customAppSurvivesPersistence() throws {
     let app = CustomApp(name: "Fork", command: "open -a '/Applications/Fork.app' \"$FOLDER\"",
                         symbol: "arrow.triangle.branch")

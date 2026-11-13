@@ -111,8 +111,8 @@ struct BarView: View {
         @Bindable var sleep = sleep
         return Menu {
             Button("Off", action: sleep.stop).disabled(sleep.label == nil)
-            ForEach(SleepBlocker.hourChoices, id: \.self) { hours in
-                Button(hours == 24 ? "1 day" : "\(hours)h") { sleep.start(hours: hours) }
+            ForEach(SleepBlocker.minuteChoices, id: \.self) { minutes in
+                Button(AwakeText.choice(minutes: minutes)) { sleep.start(minutes: minutes) }
             }
             Divider()
             Toggle("Keep display awake", isOn: $sleep.keepsDisplayAwake)
